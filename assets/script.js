@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const rateType = rateSelect.value;
 
         // Update Image
-        reservoirImage.src = `${reservoir}.png`;
+        reservoirImage.src = `./assets/images/${reservoir}.png`;
 
         // Update Chart
         updateChart(reservoir, rateType);
