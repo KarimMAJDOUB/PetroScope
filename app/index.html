@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reservoir App</title>
+    <title>PetroScope</title>
     <link rel="stylesheet" href="./assets/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,8 +14,11 @@
 <body>
     <div class="app-container">
         <header class="main-header">
-            <div class="header-left">
-                <div class="reservoir-control">
+            <div class="header-top">
+                <h1 class="app-title">PetroScope</h1>
+            </div>
+            <div class="header-bottom">
+                <div class="control-group">
                     <label for="reservoir-select" class="control-label">Reservoir</label>
                     <select id="reservoir-select" class="reservoir-dropdown">
                         <option value="reservoir1">Reservoir 1</option>
@@ -23,17 +26,22 @@
                         <option value="reservoir3">Reservoir 3</option>
                     </select>
                 </div>
-            </div>
-            <div class="header-center">
-                <h1 class="app-title">PPFML</h1>
-            </div>
-            <div class="header-right">
-                <div class="rate-control">
+                <div class="control-group">
                     <label for="rate-select" class="control-label">Rate Type</label>
                     <select id="rate-select" class="reservoir-dropdown">
                         <option value="Oil">Oil Rate</option>
                         <option value="Gas">Gas Rate</option>
                         <option value="Water">Water Rate</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="model-select" class="control-label">Model</label>
+                    <select id="model-select" class="reservoir-dropdown">
+                        <option value="model1">XGBoost</option>
+                        <option value="model2">Random Forest</option>
+                        <option value="model3">LSTM</option>
+                        <option value="model4">Transformer</option>
+                        <option value="model5">Linear Regression</option>
                     </select>
                 </div>
             </div>
@@ -83,6 +91,38 @@
                     </div>
                 </div>
             </main>
+            <aside class="filter-sidebar">
+                <div class="filter-header">
+                    <h3>Filters</h3>
+                </div>
+                <div class="filter-body">
+                    <div class="filter-group">
+                        <label for="filter-date">Date</label>
+                        <input type="date" id="filter-date" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-reservoir">Reservoir</label>
+                        <select id="filter-reservoir" class="filter-input">
+                            <option value="all">All</option>
+                            <option value="reservoir1">Reservoir 1</option>
+                            <option value="reservoir2">Reservoir 2</option>
+                            <option value="reservoir3">Reservoir 3</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-status">Status</label>
+                        <select id="filter-status" class="filter-input">
+                            <option value="all">All</option>
+                            <option value="Normal">Normal</option>
+                            <option value="Check">Check</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <button id="apply-filters" class="btn-primary">Apply Filters</button>
+                        <button id="reset-filters" class="btn-secondary">Reset</button>
+                    </div>
+                </div>
+            </aside>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

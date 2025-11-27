@@ -1,9 +1,17 @@
 document.addEventListener('DOMContentLoaded', function () {
     const reservoirSelect = document.getElementById('reservoir-select');
     const rateSelect = document.getElementById('rate-select');
+    const modelSelect = document.getElementById('model-select');
     const reservoirImage = document.getElementById('reservoir-image');
     const ctx = document.getElementById('oilRateChart').getContext('2d');
     const tableBody = document.querySelector('#data-table tbody');
+
+    // Filter Elements
+    const filterDate = document.getElementById('filter-date');
+    const filterReservoir = document.getElementById('filter-reservoir');
+    const filterStatus = document.getElementById('filter-status');
+    const applyFiltersBtn = document.getElementById('apply-filters');
+    const resetFiltersBtn = document.getElementById('reset-filters');
 
     // Chart Configuration
     Chart.defaults.color = '#e2e8f0';
@@ -100,6 +108,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return data;
     }
 
+    let allTableData = []; // Store all generated data
+
     function populateTable(data) {
         tableBody.innerHTML = '';
         data.forEach(row => {
@@ -149,9 +159,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // Update Chart
         updateChart(reservoir, rateType);
 
-        // Update Table
-        const tableData = generateTableData(reservoir, 150); // Generate 150 rows
-        populateTable(tableData);
+        // Update Table Data (regenerate for simplicity or filter if we had a real backend)
+        // For this demo, we'll regenerate data for the selected reservoir to simulate a "view" change
+        // But we also want to keep "allTableData" populated for the global filter if needed.
+        // Let's say the main view follows the reservoir select, but the filter can override.
+
+        const newData = generateTableData(reservoir, 150);
+        allTableData = newData; // Update current dataset
+        populateTable(allTableData);
     });
 
     rateSelect.addEventListener('change', function () {
@@ -161,7 +176,58 @@ document.addEventListener('DOMContentLoaded', function () {
         updateChart(reservoir, rateType);
     });
 
+    modelSelect.addEventListener('change', function () {
+        console.log(`Model changed to: ${this.value}`);
+        // Placeholder for model change logic
+        // Maybe update chart title to indicate model used?
+        mainChart.options.plugins.title.text += ` [${this.options[this.selectedIndex].text}]`;
+        mainChart.update();
+    });
+
+    // Filter Logic
+    applyFiltersBtn.addEventListener('click', function () {
+        const dateVal = filterDate.value;
+        const reservoirVal = filterReservoir.value;
+        const statusVal = filterStatus.value;
+
+        const filteredData = allTableData.filter(row => {
+            let matchDate = true;
+            let matchReservoir = true;
+            let matchStatus = true;
+
+            if (dateVal) {
+                matchDate = row.date === dateVal;
+            }
+
+            if (reservoirVal !== 'all') {
+                // row.reservoir is "Reservoir 1", value is "reservoir1"
+                // Need to normalize or map.
+                // row.reservoir format: "Reservoir 1"
+                // reservoirVal format: "reservoir1"
+                // Let's just check if row.reservoir includes the number or something simple
+                // Or construct the expected string
+                const expectedResString = reservoirVal.replace('reservoir', 'Reservoir ');
+                matchReservoir = row.reservoir === expectedResString;
+            }
+
+            if (statusVal !== 'all') {
+                matchStatus = row.status === statusVal;
+            }
+
+            return matchDate && matchReservoir && matchStatus;
+        });
+
+        populateTable(filteredData);
+    });
+
+    resetFiltersBtn.addEventListener('click', function () {
+        filterDate.value = '';
+        filterReservoir.value = 'all';
+        filterStatus.value = 'all';
+        populateTable(allTableData);
+    });
+
     // Initial Load
-    const initialTableData = generateTableData('reservoir1', 150);
-    populateTable(initialTableData);
+    allTableData = generateTableData('reservoir1', 150);
+    populateTable(allTableData);
 });

@@ -39,29 +39,28 @@ body {
 .main-header {
     background-color: var(--header-bg);
     color: var(--text-light);
-    height: 70px;
+    height: auto;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
+    flex-direction: column;
+    padding: 10px 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    gap: 10px;
+    z-index: 20;
 }
 
-.header-left,
-.header-right {
-    flex: 1;
-    display: flex;
-    align-items: center;
-}
-
-.header-right {
-    justify-content: flex-end;
-}
-
-.header-center {
-    flex: 2;
+.header-top {
     display: flex;
     justify-content: center;
+    align-items: center;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-bottom {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    align-items: center;
 }
 
 .app-title {
@@ -72,11 +71,11 @@ body {
     letter-spacing: 1px;
 }
 
-.reservoir-control,
-.rate-control {
+.control-group {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
+    min-width: 150px;
 }
 
 .control-label {
@@ -84,6 +83,7 @@ body {
     color: #94a3b8;
     font-weight: 500;
     text-transform: uppercase;
+    text-align: center;
 }
 
 .reservoir-dropdown {
@@ -91,11 +91,11 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: var(--text-light);
     border-radius: 4px;
-    padding: 4px 8px;
+    padding: 6px 10px;
     font-size: 0.9rem;
     outline: none;
     cursor: pointer;
-    min-width: 120px;
+    width: 100%;
 }
 
 .reservoir-dropdown option {
@@ -264,4 +264,74 @@ tbody tr:hover {
 .status-warning {
     color: #f59e0b;
     font-weight: 500;
+}
+
+/* Filter Sidebar Styles */
+.filter-sidebar {
+    width: 250px;
+    background-color: var(--sidebar-bg);
+    border-left: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+}
+
+.filter-header h3 {
+    font-size: 1.1rem;
+    color: var(--text-light);
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.filter-input {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.btn-primary {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #2563eb;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-dark);
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
