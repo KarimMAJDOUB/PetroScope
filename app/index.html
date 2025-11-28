@@ -50,44 +50,78 @@
             <aside class="sidebar">
                 <nav class="sidebar-nav">
                     <ul>
-                        <li class="active"><a href="#">Overview</a></li>
-                        <li><a href="#">Data Analysis</a></li>
-                        <li><a href="#">Settings</a></li>
+                        <li class="active"><a href="#" data-page="overview">Overview</a></li>
+                        <li><a href="#" data-page="data-analysis">Data Analysis</a></li>
+                        <li><a href="#" data-page="well-performance">Well Performance</a></li>
+                        <li><a href="#" data-page="settings">Settings</a></li>
                     </ul>
                 </nav>
             </aside>
             <main class="content-area">
-                <div class="content-header">
-                    <h2>Dashboard</h2>
-                </div>
-                <div class="dashboard-container">
-                    <div class="top-section">
-                        <div class="image-container">
-                            <h3>Reservoir View</h3>
-                            <img id="reservoir-image" src="./assets/images/reservoir1.png" alt="Reservoir Image">
+                <!-- Overview Page -->
+                <div id="overview-page" class="page-content active">
+                    <div class="content-header">
+                        <h2>Dashboard</h2>
+                    </div>
+                    <div class="dashboard-container">
+                        <div class="top-section">
+                            <div class="image-container">
+                                <h3>Reservoir View</h3>
+                                <img id="reservoir-image" src="./assets/images/reservoir1.png" alt="Reservoir Image">
+                            </div>
+                            <div class="graph-container">
+                                <canvas id="oilRateChart"></canvas>
+                            </div>
                         </div>
-                        <div class="graph-container">
-                            <canvas id="oilRateChart"></canvas>
+                        <div class="bottom-section">
+                            <h3>Production Data</h3>
+                            <div class="table-container">
+                                <table id="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Reservoir</th>
+                                            <th>Oil Rate (Actual)</th>
+                                            <th>Oil Rate (Predicted)</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated here by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    <div class="bottom-section">
-                        <h3>Production Data</h3>
-                        <div class="table-container">
-                            <table id="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Reservoir</th>
-                                        <th>Oil Rate (Actual)</th>
-                                        <th>Oil Rate (Predicted)</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Data will be populated here by JS -->
-                                </tbody>
-                            </table>
-                        </div>
+                </div>
+
+                <!-- Data Analysis Page -->
+                <div id="data-analysis-page" class="page-content">
+                    <div class="content-header">
+                        <h2>Data Analysis</h2>
+                    </div>
+                    <div class="blank-page">
+                        <p>This page is under development.</p>
+                    </div>
+                </div>
+
+                <!-- Well Performance Page -->
+                <div id="well-performance-page" class="page-content">
+                    <div class="content-header">
+                        <h2>Well Performance</h2>
+                    </div>
+                    <div class="blank-page">
+                        <p>This page is under development.</p>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="settings-page" class="page-content">
+                    <div class="content-header">
+                        <h2>Settings</h2>
+                    </div>
+                    <div class="blank-page">
+                        <p>This page is under development.</p>
                     </div>
                 </div>
             </main>
@@ -97,17 +131,28 @@
                 </div>
                 <div class="filter-body">
                     <div class="filter-group">
-                        <label for="filter-date">Date</label>
-                        <input type="date" id="filter-date" class="filter-input">
+                        <label for="filter-date-min">Date Min</label>
+                        <input type="date" id="filter-date-min" class="filter-input">
                     </div>
                     <div class="filter-group">
-                        <label for="filter-reservoir">Reservoir</label>
-                        <select id="filter-reservoir" class="filter-input">
-                            <option value="all">All</option>
-                            <option value="reservoir1">Reservoir 1</option>
-                            <option value="reservoir2">Reservoir 2</option>
-                            <option value="reservoir3">Reservoir 3</option>
-                        </select>
+                        <label for="filter-date-max">Date Max</label>
+                        <input type="date" id="filter-date-max" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-actual-min">Oil Rate Actual (Min)</label>
+                        <input type="number" id="filter-actual-min" class="filter-input" placeholder="Min bbl/d">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-actual-max">Oil Rate Actual (Max)</label>
+                        <input type="number" id="filter-actual-max" class="filter-input" placeholder="Max bbl/d">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-predicted-min">Oil Rate Predicted (Min)</label>
+                        <input type="number" id="filter-predicted-min" class="filter-input" placeholder="Min bbl/d">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-predicted-max">Oil Rate Predicted (Max)</label>
+                        <input type="number" id="filter-predicted-max" class="filter-input" placeholder="Max bbl/d">
                     </div>
                     <div class="filter-group">
                         <label for="filter-status">Status</label>

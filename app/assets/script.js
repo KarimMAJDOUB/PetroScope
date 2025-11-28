@@ -6,9 +6,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const ctx = document.getElementById('oilRateChart').getContext('2d');
     const tableBody = document.querySelector('#data-table tbody');
 
+    // Navigation Elements
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+    const pages = document.querySelectorAll('.page-content');
+
     // Filter Elements
-    const filterDate = document.getElementById('filter-date');
-    const filterReservoir = document.getElementById('filter-reservoir');
+    const filterDateMin = document.getElementById('filter-date-min');
+    const filterDateMax = document.getElementById('filter-date-max');
+    const filterActualMin = document.getElementById('filter-actual-min');
+    const filterActualMax = document.getElementById('filter-actual-max');
+    const filterPredictedMin = document.getElementById('filter-predicted-min');
+    const filterPredictedMax = document.getElementById('filter-predicted-max');
     const filterStatus = document.getElementById('filter-status');
     const applyFiltersBtn = document.getElementById('apply-filters');
     const resetFiltersBtn = document.getElementById('reset-filters');
@@ -83,8 +91,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Generate Dummy Data for Table
-    function generateTableData(reservoir, count = 100) {
+    // Model coefficients for different prediction accuracies
+    const modelCoefficients = {
+        'model1': { variance: 0.03, bias: 1.02 },  // XGBoost - very accurate
+        'model2': { variance: 0.05, bias: 1.01 },  // Random Forest - accurate
+        'model3': { variance: 0.08, bias: 0.98 },  // LSTM - moderate
+        'model4': { variance: 0.06, bias: 1.03 },  // Transformer - good
+        'model5': { variance: 0.12, bias: 0.95 }   // Linear Regression - less accurate
+    };
+
+    let currentModel = 'model1'; // Track current model
+    let baseActualData = {}; // Store base actual data per reservoir
+    let chartActualData = {}; // Store chart actual data per reservoir/rate combination
+
+    // Generate Base Actual Data (doesn't change with model)
+    function generateBaseActualData(reservoir, count = 100) {
         const data = [];
         const baseRate = reservoir === 'reservoir1' ? 1200 : (reservoir === 'reservoir2' ? 900 : 1500);
         const startDate = new Date('2023-01-01');
@@ -92,19 +113,38 @@ document.addEventListener('DOMContentLoaded', function () {
         for (let i = 0; i < count; i++) {
             const currentDate = new Date(startDate);
             currentDate.setDate(startDate.getDate() + i);
-
             const actual = Math.floor(baseRate + (Math.random() - 0.5) * 100);
-            const predicted = Math.floor(baseRate + (Math.random() - 0.5) * 50);
-            const status = Math.abs(actual - predicted) > 80 ? 'Check' : 'Normal';
 
             data.push({
                 date: currentDate.toISOString().split('T')[0],
                 reservoir: reservoir.charAt(0).toUpperCase() + reservoir.slice(1),
-                actual: actual,
-                predicted: predicted,
-                status: status
+                actual: actual
             });
         }
+        return data;
+    }
+
+    // Generate Table Data with predictions based on model
+    function generateTableData(reservoir, model = 'model1') {
+        // Get or create base actual data for this reservoir
+        if (!baseActualData[reservoir]) {
+            baseActualData[reservoir] = generateBaseActualData(reservoir, 150);
+        }
+
+        const modelCoef = modelCoefficients[model];
+        const data = baseActualData[reservoir].map(row => {
+            const predicted = Math.floor(row.actual * modelCoef.bias + (Math.random() - 0.5) * (row.actual * modelCoef.variance));
+            const status = Math.abs(row.actual - predicted) > 80 ? 'Check' : 'Normal';
+
+            return {
+                date: row.date,
+                reservoir: row.reservoir,
+                actual: row.actual,
+                predicted: predicted,
+                status: status
+            };
+        });
+
         return data;
     }
 
@@ -126,17 +166,37 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Update Chart Data
-    function updateChart(reservoir, rateType) {
-        // Simulate data based on inputs
+    function updateChart(reservoir, rateType, model = 'model1') {
+        const chartKey = `${reservoir}-${rateType}`;
+
+        // Generate or retrieve actual data (stays the same for this reservoir/rate combination)
+        if (!chartActualData[chartKey]) {
+            let baseValue = 1000;
+            if (reservoir === 'reservoir2') baseValue = 800;
+            if (reservoir === 'reservoir3') baseValue = 1400;
+
+            if (rateType === 'Gas') baseValue = baseValue * 5;
+            if (rateType === 'Water') baseValue = baseValue * 0.5;
+
+            chartActualData[chartKey] = Array.from({ length: 6 }, () =>
+                Math.floor(baseValue + (Math.random() - 0.5) * (baseValue * 0.1))
+            );
+        }
+
+        // Use stored actual data
+        const newDataActual = chartActualData[chartKey];
+
+        // Generate predicted data based on model (changes with model)
+        const modelCoef = modelCoefficients[model];
         let baseValue = 1000;
         if (reservoir === 'reservoir2') baseValue = 800;
         if (reservoir === 'reservoir3') baseValue = 1400;
-
-        if (rateType === 'Gas') baseValue = baseValue * 5; // Gas rates are higher numbers usually (mcf)
+        if (rateType === 'Gas') baseValue = baseValue * 5;
         if (rateType === 'Water') baseValue = baseValue * 0.5;
 
-        const newDataActual = Array.from({ length: 6 }, () => Math.floor(baseValue + (Math.random() - 0.5) * (baseValue * 0.1)));
-        const newDataPredicted = Array.from({ length: 6 }, () => Math.floor(baseValue + (Math.random() - 0.5) * (baseValue * 0.05)));
+        const newDataPredicted = newDataActual.map(actual =>
+            Math.floor(actual * modelCoef.bias + (Math.random() - 0.5) * (baseValue * modelCoef.variance))
+        );
 
         mainChart.data.datasets[0].data = newDataActual;
         mainChart.data.datasets[1].data = newDataPredicted;
@@ -144,9 +204,31 @@ document.addEventListener('DOMContentLoaded', function () {
         let unit = 'bbl/d';
         if (rateType === 'Gas') unit = 'mcf/d';
 
-        mainChart.options.plugins.title.text = `${rateType} Rate (${unit})`;
+        const modelName = modelSelect.options[modelSelect.selectedIndex].text;
+        mainChart.options.plugins.title.text = `${rateType} Rate (${unit}) - ${modelName}`;
         mainChart.update();
     }
+
+    // Page Navigation
+    navLinks.forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const targetPage = this.getAttribute('data-page');
+
+            // Update active nav item
+            document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
+            this.parentElement.classList.add('active');
+
+            // Show target page, hide others
+            pages.forEach(page => {
+                if (page.id === `${targetPage}-page`) {
+                    page.classList.add('active');
+                } else {
+                    page.classList.remove('active');
+                }
+            });
+        });
+    });
 
     // Event Listeners
     reservoirSelect.addEventListener('change', function () {
@@ -157,15 +239,11 @@ document.addEventListener('DOMContentLoaded', function () {
         reservoirImage.src = `./assets/images/${reservoir}.png`;
 
         // Update Chart
-        updateChart(reservoir, rateType);
+        updateChart(reservoir, rateType, currentModel);
 
-        // Update Table Data (regenerate for simplicity or filter if we had a real backend)
-        // For this demo, we'll regenerate data for the selected reservoir to simulate a "view" change
-        // But we also want to keep "allTableData" populated for the global filter if needed.
-        // Let's say the main view follows the reservoir select, but the filter can override.
-
-        const newData = generateTableData(reservoir, 150);
-        allTableData = newData; // Update current dataset
+        // Update Table Data with current model
+        const newData = generateTableData(reservoir, currentModel);
+        allTableData = newData;
         populateTable(allTableData);
     });
 
@@ -173,61 +251,91 @@ document.addEventListener('DOMContentLoaded', function () {
         const reservoir = reservoirSelect.value;
         const rateType = this.value;
 
-        updateChart(reservoir, rateType);
+        updateChart(reservoir, rateType, currentModel);
     });
 
     modelSelect.addEventListener('change', function () {
+        currentModel = this.value;
+        const reservoir = reservoirSelect.value;
+        const rateType = rateSelect.value;
+
         console.log(`Model changed to: ${this.value}`);
-        // Placeholder for model change logic
-        // Maybe update chart title to indicate model used?
-        mainChart.options.plugins.title.text += ` [${this.options[this.selectedIndex].text}]`;
-        mainChart.update();
+
+        // Update chart with new model predictions (actual data stays the same)
+        updateChart(reservoir, rateType, currentModel);
+
+        // Regenerate table data with new model predictions (actual data stays the same)
+        const newData = generateTableData(reservoir, currentModel);
+        allTableData = newData;
+        populateTable(allTableData);
     });
 
     // Filter Logic
     applyFiltersBtn.addEventListener('click', function () {
-        const dateVal = filterDate.value;
-        const reservoirVal = filterReservoir.value;
+        const dateMinVal = filterDateMin.value;
+        const dateMaxVal = filterDateMax.value;
+        const actualMinVal = filterActualMin.value ? parseFloat(filterActualMin.value) : null;
+        const actualMaxVal = filterActualMax.value ? parseFloat(filterActualMax.value) : null;
+        const predictedMinVal = filterPredictedMin.value ? parseFloat(filterPredictedMin.value) : null;
+        const predictedMaxVal = filterPredictedMax.value ? parseFloat(filterPredictedMax.value) : null;
         const statusVal = filterStatus.value;
 
         const filteredData = allTableData.filter(row => {
-            let matchDate = true;
-            let matchReservoir = true;
+            let matchDateMin = true;
+            let matchDateMax = true;
+            let matchActualMin = true;
+            let matchActualMax = true;
+            let matchPredictedMin = true;
+            let matchPredictedMax = true;
             let matchStatus = true;
 
-            if (dateVal) {
-                matchDate = row.date === dateVal;
+            if (dateMinVal) {
+                matchDateMin = row.date >= dateMinVal;
             }
 
-            if (reservoirVal !== 'all') {
-                // row.reservoir is "Reservoir 1", value is "reservoir1"
-                // Need to normalize or map.
-                // row.reservoir format: "Reservoir 1"
-                // reservoirVal format: "reservoir1"
-                // Let's just check if row.reservoir includes the number or something simple
-                // Or construct the expected string
-                const expectedResString = reservoirVal.replace('reservoir', 'Reservoir ');
-                matchReservoir = row.reservoir === expectedResString;
+            if (dateMaxVal) {
+                matchDateMax = row.date <= dateMaxVal;
+            }
+
+            if (actualMinVal !== null) {
+                matchActualMin = row.actual >= actualMinVal;
+            }
+
+            if (actualMaxVal !== null) {
+                matchActualMax = row.actual <= actualMaxVal;
+            }
+
+            if (predictedMinVal !== null) {
+                matchPredictedMin = row.predicted >= predictedMinVal;
+            }
+
+            if (predictedMaxVal !== null) {
+                matchPredictedMax = row.predicted <= predictedMaxVal;
             }
 
             if (statusVal !== 'all') {
                 matchStatus = row.status === statusVal;
             }
 
-            return matchDate && matchReservoir && matchStatus;
+            return matchDateMin && matchDateMax && matchActualMin && matchActualMax &&
+                matchPredictedMin && matchPredictedMax && matchStatus;
         });
 
         populateTable(filteredData);
     });
 
     resetFiltersBtn.addEventListener('click', function () {
-        filterDate.value = '';
-        filterReservoir.value = 'all';
+        filterDateMin.value = '';
+        filterDateMax.value = '';
+        filterActualMin.value = '';
+        filterActualMax.value = '';
+        filterPredictedMin.value = '';
+        filterPredictedMax.value = '';
         filterStatus.value = 'all';
         populateTable(allTableData);
     });
 
     // Initial Load
-    allTableData = generateTableData('reservoir1', 150);
+    allTableData = generateTableData('reservoir1', currentModel);
     populateTable(allTableData);
 });
