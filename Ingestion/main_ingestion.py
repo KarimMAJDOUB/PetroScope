@@ -14,7 +14,8 @@ def ingestion(file_name):
     """
 
     #path_read='Petroscope/Data/{file_name}'
-
+    root_file=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
     name_write=f"{file_name.rsplit(".", 1)[0]}.csv"
 
     path_read=os.path.join(root_file, "Data", file_name)
@@ -38,8 +39,8 @@ def ingestion(file_name):
             raw_file=raw_file.read()
         with open(path_write,'w') as net_file:
             net_file.write(raw_file)
-
-root_file=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    os.remove(path_read)
 
 file_name="volve_rate_20251207161634.xlsx" #To be changed with the CRON
 ingestion(file_name)
