@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Dec 12 16:29:10 2025
+
+@author: mdbouras
+"""
+
 import pandas as pd
 import json 
 import os
@@ -13,34 +21,61 @@ def ingestion(file_name):
     Supported formats : csv, txt, xlsx, xls, json
     """
 
-    #path_read='Petroscope/Data/{file_name}'
-    root_file=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    
-    name_write=f"{file_name.rsplit(".", 1)[0]}.csv"
+    name_write = f"{file_name.rsplit('.', 1)[0]}.csv"
 
-    path_read=os.path.join(root_file, "Data", file_name)
-    path_write=os.path.join(root_file, "Data", "Raw_Data",name_write)
-    if file_name[-5:]==".xlsx" or file_name[-4:]==".xls":
-        raw_file=pd.read_excel(path_read)
-        raw_file.to_csv(path_write, index=False)
-    elif file_name[-5:]==".json":
-        with open(path_read,'r', encoding="utf-8") as json_file:
-            data_json=json_file.read().split()
-        
-        if isinstance(data_json,list):
-            df= pd.DataFrame(data_json)
-        elif isinstance(data_json, dict):
-            df= pd.DataFrame.from_dict(data_json)
+   
+    path_read = os.path.join(root_file, "Data", file_name)
+    path_write = os.path.join(root_file, "Data", name_write)
 
-        df.to_csv(path_write,index=False)
-            
-    else:
-        with open(path_read,'r') as raw_file:
-            raw_file=raw_file.read()
-        with open(path_write,'w') as net_file:
-            net_file.write(raw_file)
+    try:
+        # NEW: check if output file already exists
+        if os.path.exists(path_write):
+            raise ValueError(f"Not acceptable: the file '{name_write}' already exists in Raw_Data")
+
+        # Excel files
+        if file_name.endswith(".xlsx") or file_name.endswith(".xls"):
+            if os.path.getsize(path_read) == 0:
+                raise ValueError(f"Not acceptable: the file '{file_name}' is empty")
+            raw_file = pd.read_excel(path_read)
+            raw_file.to_csv(path_write, index=False)
+
+        # JSON files
+        if file_name.endswith(".json"):
+            if os.path.getsize(path_read) == 0:
+                raise ValueError(f"Not acceptable: the file '{file_name}' is empty")
+            with open(path_read, 'r', encoding="utf-8") as json_file:
+                data_json = json.load(json_file)
+
+            if isinstance(data_json, list):
+                df = pd.DataFrame(data_json)
+            elif isinstance(data_json, dict):
+                df = pd.DataFrame.from_dict(data_json)
+            else:
+                raise ValueError("Unsupported JSON structure")
+
+            df.to_csv(path_write, index=False)
+
+        # CSV or TXT files
+        if file_name.endswith(".csv") or file_name.endswith(".txt"):
+            if os.path.getsize(path_read) == 0:
+                raise ValueError(f"Not acceptable: the file '{file_name}' is empty")
+            with open(path_read, 'r') as raw_file:
+                raw_file = raw_file.read()
+            with open(path_write, 'w') as net_file:
+                net_file.write(raw_file)
+
+        # If none of the above matched
+        else:
+            raise ValueError(
+                f"Unrecognized input type for '{file_name}'. "
+                "Supported types are: .csv, .txt, .xlsx, .xls, .json"
+            )
     
+    except Exception as e:
+        print(f"[ERROR] Data ingestion failed for '{file_name}'. Details: {e}")
     os.remove(path_read)
 
-file_name="volve_rate_20251207161634.xlsx" #To be changed with the CRON
+root_file = os.path.dirname(os.path.abspath(__file__))
+
+file_name = "TD02.txt"  # To be changed with the CRON
 ingestion(file_name)
