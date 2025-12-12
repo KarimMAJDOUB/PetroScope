@@ -15,7 +15,6 @@ def ingestion(file_name):
 
     #path_read='Petroscope/Data/{file_name}'
     root_file=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    print(root_file)
     
     name_write=f"{file_name.rsplit(".", 1)[0]}.csv"
 
