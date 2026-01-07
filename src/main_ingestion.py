@@ -23,8 +23,10 @@ def ingestion(file_name):
 
     name_write = f"{file_name.rsplit('.', 1)[0]}.csv"
 
-   
-    path_read = os.path.join(root_file, "Data", file_name)
+    current_file=os.path.dirname(os.path.abspath(__file__))
+    path_read = os.path.join(current_file,'..', "Data", file_name)
+    path_read=os.path.abspath(path_read)
+    print(path_read)
     path_write = os.path.join(root_file, "Data", name_write)
 
     try:
@@ -75,7 +77,3 @@ def ingestion(file_name):
         print(f"[ERROR] Data ingestion failed for '{file_name}'. Details: {e}")
     os.remove(path_read)
 
-root_file = os.path.dirname(os.path.abspath(__file__))
-
-file_name = "TD02.txt"  # To be changed with the CRON
-ingestion(file_name)
