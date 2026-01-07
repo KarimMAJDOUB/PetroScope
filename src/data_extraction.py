@@ -1,26 +1,28 @@
 import pandas as pd
 import os
+from Database_creation import load
 
-# On construit le chemin. 
-# ATTENTION : J'ai ajouté ".csv" à la fin, vérifie si c'est bien le cas !
-nom_fichier = "volve_rate_20251207161634.csv"
+nom_fichier = "volve_rate_20260106121832444_02.csv"
+
 
 # Si tu es à la racine du projet :
 chemin_complet = os.path.join('Data', nom_fichier)
 
-print(f"Chargement de : {chemin_complet}")
-def dataExtraction():
+
+def dataExtraction(file_name):
     """
     Transforme les données brutes en DataFrame Pandas propre.
     """
+    path_file=os.path.join('Data', nom_fichier)
+
     # 1. Création du DataFrame
+
     df = pd.read_csv(chemin_complet)
-        
-        
-    return df
-df = dataExtraction()
-print(df)
-print(df.head())
+    load(df)
+    return print("Done")
+dataExtraction(nom_fichier)
+
+
 
 
 

@@ -43,6 +43,6 @@ def cron_ingestion():
 
 scheduler = BlockingScheduler()
 
-scheduler.add_job(cron_ingestion, 'cron', hour='*/2')
+scheduler.add_job(cron_ingestion, 'cron', second='*/60')
 
 scheduler.start()
