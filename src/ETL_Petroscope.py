@@ -1,6 +1,9 @@
 import pandas as pd
 import os
 import pymysql
+import logging
+
+logger = logging.getLogger(__name__)
 
 from config.sql_config import sql_settings
 
@@ -54,12 +57,17 @@ def load(df) -> None:
     """
     Loads data into a MySQL database using pymysql.
     """
-    connection = pymysql.connect(
-        user=sql_settings.user,
-        password=sql_settings.password,
-        database=sql_settings.database,
-        cursorclass=sql_settings.cursorclass
-    )
+    try:
+        connection = pymysql.connect(
+            user=sql_settings.user,
+            password=sql_settings.password,
+            database=sql_settings.database,
+            cursorclass=sql_settings.cursorclass
+        )
+        logger.info(f"Connection established!")
+    except pymysql.err.OperationalError as e:
+        logger.error(f"Connection failed: {e}")
+    
 
     try:
         with connection.cursor() as cursor:
@@ -183,6 +191,7 @@ def load(df) -> None:
 
         connection.commit()
     finally:
+        logger.info("Connection closed")
         connection.close()
 
 
@@ -191,5 +200,3 @@ data_extracted=data_extract('volve_rate_20260106121832444_02.csv')
 data_transformed=data_transform(data_extracted)
 
 load(data_transformed)
-
-print("Done")
