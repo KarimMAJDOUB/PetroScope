@@ -3,6 +3,9 @@ from main_ingestion import ingestion
 
 import apscheduler
 import os
+import logging
+
+logger = logging.getLogger(__file__)
 
 def get_latest_file():
     """
@@ -28,18 +31,18 @@ def cron_ingestion():
     If no file is found, it simply skips the execution
     """
 
-    print("Ingestion task started")
+    logger.info("Ingestion task started")
     try:
         file_name = get_latest_file()
 
         if file_name is None:
-            print("No file found, skipping this run")
+            logger.debug("No file found, skipping this run")
             return
         
         ingestion(file_name)
-        print(f"Ingestion completed for {file_name}")
+        logger.info(f"Ingestion completed for {file_name}")
     except Exception as e:
-        print(f"Error during ingestion : {e}")
+        logger.error(f"Error during ingestion : {e}")
 
 scheduler = BlockingScheduler()
 
