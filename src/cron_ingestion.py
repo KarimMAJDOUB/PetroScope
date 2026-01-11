@@ -5,7 +5,7 @@ import apscheduler
 import os
 import logging
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 def get_latest_file():
     """
