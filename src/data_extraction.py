@@ -4,7 +4,7 @@ from Database_creation import load
 
 import logging
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 nom_fichier = "volve_rate_20260106121832444_02.csv"
 

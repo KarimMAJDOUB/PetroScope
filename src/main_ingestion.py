@@ -10,6 +10,9 @@ import pandas as pd
 import json 
 import os
 import csv
+import logging
+
+logger = logging.getLogger(__name__)
 
 def ingestion(file_name):
     """
@@ -73,7 +76,7 @@ def ingestion(file_name):
             )
     
     except Exception as e:
-        print(f"[ERROR] Data ingestion failed for '{file_name}'. Details: {e}")
+        logger.error(f"[ERROR] Data ingestion failed for '{file_name}'. Details: {e}")
     os.remove(path_read)
 
 

@@ -1,6 +1,9 @@
 import pandas as pd
 import os
 import pymysql
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def data_extract(file_name):
@@ -57,12 +60,17 @@ def load(df) -> None:
     db_password = "Jujuaurugby10!"
     db_name = "Petroscope"
 
-    connection = pymysql.connect(
-        user=db_user,
-        password=db_password,
-        database=db_name,
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    try:
+        connection = pymysql.connect(
+            user=db_user,
+            password=db_password,
+            database=db_name,
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        logger.info(f"Connection established!")
+    except pymysql.err.OperationalError as e:
+        logger.error(f"Connection failed: {e}")
+    
 
     try:
         with connection.cursor() as cursor:
@@ -186,6 +194,7 @@ def load(df) -> None:
 
         connection.commit()
     finally:
+        logger.info("Connection closed")
         connection.close()
 
 
