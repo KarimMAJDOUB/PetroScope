@@ -5,6 +5,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from config.sql_config import sql_settings
+
 
 def data_extract(file_name):
     """
@@ -55,17 +57,12 @@ def load(df) -> None:
     """
     Loads data into a MySQL database using pymysql.
     """
-
-    db_user = "root"
-    db_password = "Jujuaurugby10!"
-    db_name = "Petroscope"
-
     try:
         connection = pymysql.connect(
-            user=db_user,
-            password=db_password,
-            database=db_name,
-            cursorclass=pymysql.cursors.DictCursor
+            user=sql_settings.user,
+            password=sql_settings.password,
+            database=sql_settings.database,
+            cursorclass=sql_settings.cursorclass
         )
         logger.info(f"Connection established!")
     except pymysql.err.OperationalError as e:
@@ -203,5 +200,3 @@ data_extracted=data_extract('volve_rate_20260106121832444_02.csv')
 data_transformed=data_transform(data_extracted)
 
 load(data_transformed)
-
-print("Done")
