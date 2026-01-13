@@ -1,5 +1,6 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
-from main_ingestion import ingestion
+from ingestion.main_ingestion import ingestion
+from ETL.orchestration import ETL_orchestration
 
 import apscheduler
 import os
@@ -27,8 +28,7 @@ def get_latest_file():
 def cron_ingestion():
     """
     Function called every 2 hours
-    It retrieves the latest file and sends it to the ingestion function
-    If no file is found, it simply skips the execution
+    Retrieves the latest file, prepares it, then runs the full ETL pipeline
     """
 
     logger.info("Ingestion task started")
@@ -41,11 +41,18 @@ def cron_ingestion():
         
         ingestion(file_name)
         logger.info(f"Ingestion completed for {file_name}")
+    
+        csv_file_name = f"{file_name.rsplit('.',1)[0]}_ready.csv"
+        logger.info(f"Starting ETL pipeline for {csv_file_name}")
+
+        ETL_orchestration(csv_file_name)
+        logger.info(f"ETL pipeline completed for {csv_file_name}")
+
     except Exception as e:
         logger.error(f"Error during ingestion : {e}")
 
 scheduler = BlockingScheduler()
 
-scheduler.add_job(cron_ingestion, 'cron', second='*/59')
+scheduler.add_job(cron_ingestion, 'cron', hour='*/2')
 
 scheduler.start()
