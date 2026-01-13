@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jan 13 15:55:01 2026
+
+@author: RHEDDAD
+"""
+
 from apscheduler.schedulers.blocking import BlockingScheduler
 from main_ingestion import ingestion
 
@@ -43,9 +50,14 @@ def cron_ingestion():
         logger.info(f"Ingestion completed for {file_name}")
     except Exception as e:
         logger.error(f"Error during ingestion : {e}")
+        
 
+# Création du scheduler
 scheduler = BlockingScheduler()
 
-scheduler.add_job(cron_ingestion, 'cron', second='*/59')
+# Planification toutes les 2 heures 
+scheduler.add_job(cron_ingestion, 'cron', hour='*/2', minute=0, second=0)
 
+logger.info("Scheduler started. Cron ingestion will run every 2 hours.")
 scheduler.start()
+
