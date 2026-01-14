@@ -11,3 +11,5 @@ def extract(file_name: str) -> pd.DataFrame:
     path_file = os.path.join('Data', 'Data_Ingested', file_name)
     df = pd.read_csv(path_file)
     logger.info("DataFrame created with success")
+
+    return df
