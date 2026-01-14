@@ -2,11 +2,9 @@ import pandas as pd
 import os
 import pymysql
 import logging
-
-logger = logging.getLogger(__name__)
-
 from config.sql_config import sql_settings
 
+logger = logging.getLogger(__name__)
 
 def data_extract(file_name):
     """
@@ -195,7 +193,7 @@ def load(df) -> None:
         connection.close()
 
 
-data_extracted=data_extract('volve_rate_20260106121832444_02.csv')
+data_extracted=data_extract('Data_Ingested/volve_rate_20260106121832573_03_ready.csv')
 
 data_transformed=data_transform(data_extracted)
 
