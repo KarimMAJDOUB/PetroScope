@@ -128,7 +128,7 @@ def LSTM_model():
     df_model["id_model"] = id_model
     df_model["model_type"] = "LSTM"
     
-    return df_best,df_model
+    return df_best,df_model,best_model, scaler
 
 def LSTM_param_load(df) -> None:
     """
