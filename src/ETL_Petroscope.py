@@ -2,10 +2,10 @@ import pandas as pd
 import os
 import pymysql
 import logging
+from config.sql_config import sql_settings
 
 logger = logging.getLogger(__name__)
 
-from config.sql_config import sql_settings
 
 
 def data_extract(file_name):
