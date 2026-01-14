@@ -40,12 +40,14 @@ def cron_ingestion():
             return
         
         ingestion(file_name)
+        print("done")
         logger.info(f"Ingestion completed for {file_name}")
     except Exception as e:
         logger.error(f"Error during ingestion : {e}")
 
+
 scheduler = BlockingScheduler()
 
-scheduler.add_job(cron_ingestion, 'cron', second='*/59')
+scheduler.add_job(cron_ingestion, 'cron', second='*/10')
 
 scheduler.start()
