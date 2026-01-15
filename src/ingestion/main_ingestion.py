@@ -27,9 +27,11 @@ def ingestion(file_name):
     name_write = f"{file_name.rsplit('.', 1)[0]}_ready.csv"
 
     current_file=os.path.dirname(os.path.abspath(__file__))
-    path_read = os.path.join(current_file,'..', "Data", file_name)
+    path_read = os.path.join(current_file,'..', '..', "Data", "Raw_Data", file_name)
     path_read=os.path.abspath(path_read)
-    path_write = os.path.join(current_file,'..', "Data","Data_Ingested", name_write)
+    path_write = os.path.join(current_file,'..','..', "Data","Data_Ingested", name_write)
+    
+    df = None
 
     try:
         # NEW: check if output file already exists
@@ -74,9 +76,14 @@ def ingestion(file_name):
                 f"Unrecognized input type for '{file_name}'. "
                 "Supported types are: .csv, .txt, .xlsx, .xls, .json"
             )
-    
+            
+        return df
+
     except Exception as e:
         logger.error(f"[ERROR] Data ingestion failed for '{file_name}'. Details: {e}")
-    os.remove(path_read)
+        return None
+    
+    finally:
+        os.remove(path_read)
 
 

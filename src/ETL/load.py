@@ -1,5 +1,4 @@
 import pandas as pd
-import os
 import pymysql
 import logging
 
@@ -7,53 +6,7 @@ logger = logging.getLogger(__name__)
 
 from config.sql_config import sql_settings
 
-
-def data_extract(file_name):
-    """
-    Transforme les données brutes en DataFrame Pandas propre.
-    """
-    path_file=os.path.join('Data', file_name)
-    df = pd.DataFrame(pd.read_csv(path_file))
-
-    return df
-
-def data_transform(df):
-    numeric_cols = [
-                'ON_STREAM_HRS',
-                'AVG_DOWNHOLE_PRESSURE',
-                'AVG_DOWNHOLE_TEMPERATURE',
-                'AVG_DP_TUBING',
-                'AVG_ANNULUS_PRESS',
-                'AVG_CHOKE_SIZE_P',
-                'AVG_WHP_P',
-                'AVG_WHT_P',
-                'DP_CHOKE_SIZE',
-                'BORE_OIL_VOL',
-                'BORE_GAS_VOL',
-                'BORE_WAT_VOL',
-                'BORE_WI_VOL'
-            ]
-
-    df[numeric_cols] = (
-        df[numeric_cols]
-        .astype(object)
-        .where(pd.notnull(df[numeric_cols]), None)
-    )
-
-    text_cols = [
-        'AVG_CHOKE_UOM',
-        'FLOW_KIND',
-        'NPD_WELL_BORE_CODE',
-        'NPD_WELL_BORE_NAME',
-        'NPD_FIELD_CODE',
-        'NPD_FIELD_NAME',
-        'WELL_TYPE'
-    ]
-
-    df[text_cols] = df[text_cols].where(pd.notnull(df[text_cols]), None)
-    return df
-
-def load(df) -> None:
+def load(df: pd.DataFrame) -> None:
     """
     Loads data into a MySQL database using pymysql.
     """
@@ -193,10 +146,3 @@ def load(df) -> None:
     finally:
         logger.info("Connection closed")
         connection.close()
-
-
-data_extracted=data_extract('volve_rate_20260106121832444_02.csv')
-
-data_transformed=data_transform(data_extracted)
-
-load(data_transformed)
