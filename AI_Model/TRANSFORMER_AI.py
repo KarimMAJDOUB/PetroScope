@@ -71,22 +71,13 @@ def transformer_model(input_dim=3, d_model=64, nhead=4, num_layers=2, dropout=0.
 def transomer_AI():
     net=NeuralNetRegressor(module=transformer_model, module__input_dim=3, max_epochs=10, lr=1e-4, batch_size=32, optimizer=torch.optim.Adam, criterion=nn.MSELoss, device ="cpu")
 
-    # param_distributions = {
-    #     "module__d_model": [32, 64],
-    #     "module__nhead": [2, 4],
-    #     "module__num_layers": [1, 2],
-    #     "module__dropout": [0.0, 0.1, 0.2],
-    #     "lr": [1e-4, 3e-4, 1e-3],
-    #     "batch_size": [16, 32, 64]
-    # }
-
     param_distributions = {
-        "module__d_model": [32],
-        "module__nhead": [2],
-        "module__num_layers": [1],
-        "module__dropout": [0.1],
-        "lr": [1e-4],
-        "batch_size": [16]
+        "module__d_model": [32, 64],
+        "module__nhead": [2, 4],
+        "module__num_layers": [1, 2],
+        "module__dropout": [0.0, 0.1, 0.2],
+        "lr": [1e-4, 3e-4, 1e-3],
+        "batch_size": [16, 32, 64]
     }
 
     tscv=TimeSeriesSplit(n_splits=3)
