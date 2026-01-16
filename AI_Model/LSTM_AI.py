@@ -120,8 +120,9 @@ def LSTM_model():
     df_best["id_model"]=id_model  
 
     df_model = pd.DataFrame(
-    data=y_pred_inv,
-    columns=["OIL_VOL", "GAS_VOL", "WAT_VOL"]
+    data_test=y_test_inv,
+    data_pred=y_pred_inv,
+    columns=["OIL_VOL_test", "GAS_VOL_test", "WAT_VOL_test","OIL_VOL_pred", "GAS_VOL_pred", "WAT_VOL_pred"]
     )
 
     df_model["DAYTIME"] = pd.to_datetime(time_test.values)
