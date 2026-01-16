@@ -193,7 +193,7 @@ def LSTM_param_load(df) -> None:
                         row['epochs'],
                         row['batch_size'],
                         row['mse'],
-                        row['look_back'],
+                        row['look_back']
                     )
                 )
 
