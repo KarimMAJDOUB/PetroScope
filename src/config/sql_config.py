@@ -1,4 +1,5 @@
 import pymysql
+import os
 from enum import Enum
 from pydantic_settings import BaseSettings
 from typing import Final
@@ -31,6 +32,7 @@ class CursorEnum(str, Enum):
             raise NotImplementedError("Cursor non implémenté")
 
 class SQLConfig(BaseSettings):
+    
     user: str
     password: str
     database: str
@@ -41,6 +43,7 @@ class SQLConfig(BaseSettings):
         return self.cursor.cursorclass
 
     class Config:
+        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
         env_file = None  # on a déjà injecté os.environ
 
 sql_settings: Final[SQLConfig] = SQLConfig()

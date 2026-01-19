@@ -37,6 +37,12 @@ def ingestion(file_name):
     path_read = os.path.join(root_file, "Data", file_name)
     path_write = os.path.join(root_file, "Data", name_write)
 
+    current_file=os.path.dirname(os.path.abspath(__file__))
+    path_read = os.path.join(current_file,'..', '..', "Data", "Raw_Data", file_name)
+    path_read=os.path.abspath(path_read)
+    path_write = os.path.join(current_file,'..','..', "Data","Data_Ingested", name_write)
+    
+    df = None
     logging.info(f"Tentative d'ingestion du fichier : {file_name}")
 
     try:
