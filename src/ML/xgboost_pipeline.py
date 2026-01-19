@@ -75,10 +75,9 @@ if __name__ == "__main__":
         search = RandomizedSearchCV(
             XGBRegressor(random_state=42),
             params,
-            n_iter=5,
-            cv=3,
-            scoring="r2",
-            verbose=1
+
+            verbose=1,
+            random_state=42,
         )
 
         #log-transform

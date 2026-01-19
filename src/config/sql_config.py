@@ -19,6 +19,8 @@ class CursorEnum(str, Enum):
 class SQLConfig(BaseSettings):
     
     user: str
+    host: str
+    port: int
     password: str
     database: str
     cursor: CursorEnum
