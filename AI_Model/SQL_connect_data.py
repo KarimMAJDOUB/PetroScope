@@ -20,10 +20,3 @@ def Call_data_sql(sql_query):
     df = pd.read_sql(sql_query, engine)
 
     return df
-
-#Exemple
-query="SELECT DAYTIME,sum(BORE_OIL_VOL) as OIL_VOL,sum(BORE_WAT_VOL) AS WAT_VOL,sum(BORE_GAS_VOL) AS GAS_VOL FROM PWELL_DATA group by DAYTIME;"
-
-data_pwell=Call_data_sql(query)
-
-print(data_pwell.head())
