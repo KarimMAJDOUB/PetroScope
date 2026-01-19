@@ -3,6 +3,7 @@ import pandas as pd
 from functools import cached_property
 from sqlalchemy import create_engine
 from sklearn.impute import KNNImputer
+from sklearn.preprocessing import StandardScaler
 from category_encoders.cat_boost import CatBoostEncoder
 
 from config.sql_config import SQLConfig, sql_settings
@@ -41,10 +42,14 @@ class Cleaner:
     def fill_na(self, df: pd.DataFrame) -> pd.DataFrame:
         imputer = KNNImputer(n_neighbors=self.n_neighbors)
         imputed = imputer.fit_transform(df)
-        cols = df.columns[~df.isna().all()]
-        return pd.DataFrame(
-            imputed,
-            columns=cols
-        )
+        return pd.DataFrame(imputed, columns=df.columns)
+    
+    def normalize(self, df: pd.DataFrame, columns: list[str] = None) -> pd.DataFrame:
+        if columns is None:
+            columns = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+
+        scaler = StandardScaler()
+        df[columns] = scaler.fit_transform(df[columns])
+        return df
     
 
