@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Dec 12 16:29:10 2025
+Created on Sun Jan 11 10:55:11 2026
 
-@author: mdbouras
+@author: RHEDDAD
 """
 
 import pandas as pd
@@ -11,8 +10,18 @@ import json
 import os
 import csv
 import logging
+import getpass
 
-logger = logging.getLogger(__name__)
+# Setup logging
+logging.basicConfig(
+    format='[%(asctime)s] [%(levelname)s] %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# Identify user
+user = getpass.getuser()
+logging.info(f"Script lancé par l'utilisateur : {user}")
 
 def ingestion(file_name):
     """
@@ -24,29 +33,30 @@ def ingestion(file_name):
     Supported formats : csv, txt, xlsx, xls, json
     """
 
-    name_write = f"{file_name.rsplit('.', 1)[0]}_ready.csv"
+    name_write = f"{file_name.rsplit('.', 1)[0]}.csv"
+    path_read = os.path.join(root_file, "Data", file_name)
+    path_write = os.path.join(root_file, "Data", name_write)
 
-    current_file=os.path.dirname(os.path.abspath(__file__))
-    path_read = os.path.join(current_file,'..', "Data", file_name)
-    path_read=os.path.abspath(path_read)
-    path_write = os.path.join(current_file,'..', "Data","Data_Ingested", name_write)
+    logging.info(f"Tentative d'ingestion du fichier : {file_name}")
 
     try:
-        # NEW: check if output file already exists
         if os.path.exists(path_write):
-            raise ValueError(f"Not acceptable: the file '{name_write}' already exists in Raw_Data")
+            raise ValueError(f"Le fichier '{name_write}' existe déjà. Ingestion annulée.")
 
         # Excel files
         if file_name.endswith(".xlsx") or file_name.endswith(".xls"):
+            logging.info("Format fichier détecté : Excel")
             if os.path.getsize(path_read) == 0:
-                raise ValueError(f"Not acceptable: the file '{file_name}' is empty")
+                raise ValueError(f"Le fichier '{file_name}' est vide.")
             raw_file = pd.read_excel(path_read)
             raw_file.to_csv(path_write, index=False)
+            logging.info(f"Fichier Excel converti et sauvegardé en : {name_write}")
 
         # JSON files
-        if file_name.endswith(".json"):
+        elif file_name.endswith(".json"):
+            logging.info("Format fichier détecté : JSON")
             if os.path.getsize(path_read) == 0:
-                raise ValueError(f"Not acceptable: the file '{file_name}' is empty")
+                raise ValueError(f"Le fichier '{file_name}' est vide.")
             with open(path_read, 'r', encoding="utf-8") as json_file:
                 data_json = json.load(json_file)
 
@@ -55,28 +65,38 @@ def ingestion(file_name):
             elif isinstance(data_json, dict):
                 df = pd.DataFrame.from_dict(data_json)
             else:
-                raise ValueError("Unsupported JSON structure")
+                raise ValueError("Structure JSON non supportée")
 
             df.to_csv(path_write, index=False)
+            logging.info(f"Fichier JSON converti et sauvegardé en : {name_write}")
 
         # CSV or TXT files
-        if file_name.endswith(".csv") or file_name.endswith(".txt"):
+        elif file_name.endswith(".csv") or file_name.endswith(".txt"):
+            logging.info("Format fichier détecté : CSV ou TXT")
             if os.path.getsize(path_read) == 0:
-                raise ValueError(f"Not acceptable: the file '{file_name}' is empty")
+                raise ValueError(f"Le fichier '{file_name}' est vide.")
             with open(path_read, 'r') as raw_file:
                 raw_file = raw_file.read()
             with open(path_write, 'w') as net_file:
                 net_file.write(raw_file)
+            logging.info(f"Fichier texte copié vers : {name_write}")
 
-        # If none of the above matched
         else:
             raise ValueError(
-                f"Unrecognized input type for '{file_name}'. "
-                "Supported types are: .csv, .txt, .xlsx, .xls, .json"
+                f"Type de fichier non reconnu pour '{file_name}'. "
+                "Types supportés : .csv, .txt, .xlsx, .xls, .json"
             )
-    
+
     except Exception as e:
-        logger.error(f"[ERROR] Data ingestion failed for '{file_name}'. Details: {e}")
-    os.remove(path_read)
+        logging.error(f"Échec de l'ingestion du fichier '{file_name}'. Détails : {e}")
+    else:
+        logging.info(f"Ingestion de '{file_name}' terminée avec succès.")
+    finally:
+        if os.path.exists(path_read):
+            os.remove(path_read)
+            logging.info(f"Fichier original supprimé : {file_name}")
 
+root_file = os.path.dirname(os.path.abspath(__file__))
 
+file_name = "TD02.txt"  # To be changed with the CRON
+ingestion(file_name)
