@@ -57,6 +57,7 @@ def cron_ingestion():
             return
         
         ingestion(file_name)
+        print("done")
         logger.info(f"Ingestion completed for {file_name}")
         
         logger.info("--- Démarrage calcul IA ---")
@@ -93,6 +94,10 @@ def cron_ingestion():
 scheduler = BlockingScheduler()
 
 scheduler.add_job(cron_ingestion, 'cron', second='*/5')
+
+scheduler = BlockingScheduler()
+
+scheduler.add_job(cron_ingestion, 'cron', second='*/10')
 
 scheduler.start()
 if __name__ == "__main__":

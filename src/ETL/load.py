@@ -8,15 +8,19 @@ import pandas as pd
 import os
 import pymysql
 import logging
+from config.sql_config import sql_settings
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+logger = logging.getLogger(__name__)
 
 def data_extract(file_name):
     """
     Transforme les données brutes en DataFrame Pandas propre.
     """
+    path_file=os.path.join('Data','Data_Ingested', file_name)
+    df = pd.DataFrame(pd.read_csv(path_file))
     try:
         path_file=os.path.join('Data', file_name)
         df = pd.DataFrame(pd.read_csv(path_file))
@@ -33,6 +37,27 @@ def data_extract(file_name):
 
 
 def data_transform(df):
+    numeric_cols = [
+                'ON_STREAM_HRS',
+                'AVG_DOWNHOLE_PRESSURE',
+                'AVG_DOWNHOLE_TEMPERATURE',
+                'AVG_DP_TUBING',
+                'AVG_ANNULUS_PRESS',
+                'AVG_CHOKE_SIZE_P',
+                'AVG_WHP_P',
+                'AVG_WHT_P',
+                'DP_CHOKE_SIZE',
+                'BORE_OIL_VOL',
+                'BORE_GAS_VOL',
+                'BORE_WAT_VOL',
+                'BORE_WI_VOL'
+            ]
+    print(df[numeric_cols])
+    df[numeric_cols] = (
+        df[numeric_cols]
+        .astype(object)
+        .where(pd.notnull(df[numeric_cols]), None)
+    )
     if df is None:
         logger.error("Aucune donnée à transformer")
         return None
@@ -260,6 +285,7 @@ def load(df) -> None:
             logger.error(f"Erreur fermeture connexion MySQL: {e}")
 
 
+data_extracted=data_extract('Data_Ingested/volve_rate_20260106121832573_02_ready.csv')
 data_extracted = data_extract('volve_rate_20260106121832444_02.csv')
 data_transformed = data_transform(data_extracted)
 load(data_transformed)
