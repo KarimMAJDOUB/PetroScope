@@ -1,1 +1,7 @@
 pydantic-settings
+
+=====================================================================================
+Connexion to serveur :
+- Install fastapi library : pip install fastapi
+- Run the command in your terminal : uvicorn app.main:app --reload
+- Open your browser and enter the URL : http://localhost:8000/
