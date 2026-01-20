@@ -6,17 +6,27 @@ import logging
 import time 
 import sys
 
-# Import de modèle (RF) ---
+# Import de modèle (RF) et (LSTM) ---
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.dirname(current_dir)                 
+sys.path.append(src_dir)
 
 try:
-    # On importe tes fonctions depuis ton fichier RF_model.py
-    from RF_model import RF_model, RF_param_load, model_load as model_save
+    from AI_Model.RF_AI import RF_model, RF_param_load, model_load as model_save
     RF_AVAILABLE = True
 except ImportError as e:
-    print(f"Attention: RF_model.py non trouvé ou erreur: {e}")
+    print(f"Attention: RF_AI.py non trouvé ou erreur: {e}")
     RF_AVAILABLE = False
+    
+
+try:
+    from AI_Model.LSTM_AI import LSTM_model, LSTM_param_load
+    from AI_Model.Model_Load import model_load as LSTM_save_preds
+    LSTM_AVAILABLE = True
+except ImportError as e:
+    print(f"Attention: LSTM_AI.py non trouvé ou erreur: {e}")
+    LSTM_AVAILABLE = False
 # -----------------------------------------
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -76,10 +86,30 @@ def cron_ingestion():
             logger.warning("Random Forest : Fichier introuvable")
         t1_rf = time.time()
         
-        duration_rf = t1_rf - t0_rf
-        logger.info(f" TEMPS DE CALCUL - Random Forest : {duration_rf:.4f} secondes")
+        # === IA 2 : LSTM ===
+        t0_lstm = time.time()
+        if LSTM_AVAILABLE:
+            try:
+                df_best, df_model_lstm, _, _ = LSTM_model()              
+                if df_best is not None:
+                    LSTM_param_load(df_best)
+                    LSTM_save_preds(df_model_lstm)
+                logger.info(" LSTM : Succès")
+            except Exception as e:
+                logger.error(f" LSTM : Erreur ({e})")
+        else:
+            logger.info(" LSTM : Non disponible")
+        t1_lstm = time.time()
         
-        logger.info("--- Fin calcul IA ---")
+        
+    
+        duration_rf = t1_rf - t0_rf
+        duration_lstm = t1_lstm - t0_lstm
+        
+        logger.info(f" TEMPS RF   : {duration_rf:.4f} s")
+        if LSTM_AVAILABLE:
+            logger.info(f" TEMPS LSTM : {duration_lstm:.4f} s")
+        
 
     except Exception as e:
         logger.error(f"Error in execution: {e}")
