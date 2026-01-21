@@ -120,6 +120,11 @@ def RF_model():
     }])
 
     df_predictions = pd.DataFrame(y_pred, columns=['OIL_VOL', 'GAS_VOL', 'WAT_VOL'])
+    
+    df_predictions['BORE_OIL_VOL'] = y_test['NEXT_OIL'].values
+    df_predictions['BORE_GAS_VOL'] = y_test['NEXT_GAS'].values
+    df_predictions['BORE_WAT_VOL'] = y_test['NEXT_WAT'].values
+    
     df_predictions["DAYTIME"] = dates_test.values + pd.Timedelta(days=1)
     df_predictions["id_model"] = id_model
     df_predictions["model_type"] = "RF"
