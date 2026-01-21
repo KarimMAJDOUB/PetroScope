@@ -1,15 +1,8 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import tensorflow as tf
 import pymysql
 import logging
-import sys
-import os
 import uuid
-
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.config.sql_config import sql_settings
 
@@ -17,7 +10,6 @@ from datetime import datetime
 from src.data_access.sql_reader import call_data_sql
 
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
 
 from keras.models import Sequential
@@ -46,7 +38,7 @@ def build_model(units=64, learning_rate=0.001, look_back=20):
     )
     return model
 
-def LSTM_model():
+def lstm_model():
 
     df = call_data_sql("""
         SELECT DAYTIME,
@@ -131,7 +123,7 @@ def LSTM_model():
     
     return df_best,df_model,best_model, scaler
 
-def LSTM_param_load(df) -> None:
+def lstm_param_load(df) -> None:
     """
     Loads data into a MySQL database using pymysql.
     """
@@ -145,7 +137,7 @@ def LSTM_param_load(df) -> None:
         logger.info(f"Connection established!")
     except pymysql.err.OperationalError as e:
         logger.error(f"Connection failed: {e}")
-    
+        return
 
     try:
         with connection.cursor() as cursor:

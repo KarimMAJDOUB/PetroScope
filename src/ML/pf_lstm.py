@@ -1,30 +1,26 @@
-import torch
-import torch.nn as nn
-import pandas as pd
-import numpy as np
+import logging
 import uuid
 import io
-import torch
-import joblib
 import json
-import logging
+
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import joblib
 import pymysql
-import sys
-import os
-
 from sklearn.preprocessing import MinMaxScaler
-import matplotlib.pyplot as plt
 from skorch import NeuralNetRegressor
-
+import matplotlib.pyplot as plt
 
 from src.data_access.sql_reader import call_data_sql
-from LSTM_AI import LSTM_model
-from TRANSFORMER_AI import transformer_model
-from Model_Load import PF_Load
+from src.ml.lstm import lstm_model
+from src.ml.transformer import transformer_model
+from src.ml.model_load import pf_load
 
-def PF_LSTM(n_days):
+def pf_lstm(n_days):
 
-    df_best, df_model, best_estimator, scaler = LSTM_model()
+    df_best, df_model, best_estimator, scaler = lstm_model()
 
     model = best_estimator.model_
 
@@ -116,9 +112,9 @@ def predict_future_from_saved_model(id_model, n_days):
     look_back = int(row['look_back'])
     df = call_data_sql(f"""
         SELECT DAYTIME,
-            SUM(BORE_OIL_VOL) AS OIL_VOL,
-            SUM(BORE_GAS_VOL) AS GAS_VOL,
-            SUM(BORE_WAT_VOL) AS WAT_VOL
+        SUM(BORE_OIL_VOL) AS OIL_VOL,
+        SUM(BORE_GAS_VOL) AS GAS_VOL,
+        SUM(BORE_WAT_VOL) AS WAT_VOL
         FROM PWELL_DATA
         GROUP BY DAYTIME
         ORDER BY DAYTIME ASC
@@ -162,5 +158,5 @@ def predict_future_from_saved_model(id_model, n_days):
     
     return df_future
 
-PF_Load(predict_future_from_saved_model("5dca9ac6-19f4-4f8f-bdac-181d455f5555", n_days=90))
+pf_load(predict_future_from_saved_model("5dca9ac6-19f4-4f8f-bdac-181d455f5555", n_days=90))
 

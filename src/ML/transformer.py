@@ -1,29 +1,23 @@
-import torch
-import torch.nn as nn
-import pandas as pd
-import numpy as np
+import logging
 import uuid
 import io
-import torch
-import joblib
 import json
-import logging
+
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import joblib
 import pymysql
-import sys
-import os
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.config.sql_config import sql_settings
-from Model_Load import model_load
-
-from skorch import NeuralNetRegressor
-from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit, train_test_split
 from sklearn.preprocessing import StandardScaler
+from skorch import NeuralNetRegressor
 
-
+# Imports internes
+from src.config.sql_config import sql_settings
 from src.data_access.sql_reader import call_data_sql
+from src.ml.model_load import model_load
+from src.ml.lstm import lstm_model
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +62,16 @@ def transformer_model(input_dim=3, d_model=64, nhead=4, num_layers=2, dropout=0.
 
     return Model()
 
-def transomer_AI():
-    net=NeuralNetRegressor(module=transformer_model, module__input_dim=3, max_epochs=10, lr=1e-4, batch_size=32, optimizer=torch.optim.Adam, criterion=nn.MSELoss, device ="cpu")
+def transformer():
+    net=NeuralNetRegressor(
+        module=transformer_model, 
+        module__input_dim=3, 
+        max_epochs=10, lr=1e-4, 
+        batch_size=32, 
+        optimizer=torch.optim.Adam, 
+        criterion=nn.MSELoss, 
+        device ="cpu"
+    )
 
     # param_distributions = {
     #     "module__d_model": [32, 64],
@@ -143,12 +145,12 @@ def transomer_AI():
     id_model=str(uuid.uuid4())
 
     df_model = pd.DataFrame({
-    "OIL_VOL_test": y_test_inv[:, 0],
-    "GAS_VOL_test": y_test_inv[:, 1],
-    "WAT_VOL_test": y_test_inv[:, 2],
-    "OIL_VOL_pred": y_pred_inv[:, 0],
-    "GAS_VOL_pred": y_pred_inv[:, 1],
-    "WAT_VOL_pred": y_pred_inv[:, 2]
+        "OIL_VOL_test": y_test_inv[:, 0],
+        "GAS_VOL_test": y_test_inv[:, 1],
+        "WAT_VOL_test": y_test_inv[:, 2],
+        "OIL_VOL_pred": y_pred_inv[:, 0],
+        "GAS_VOL_pred": y_pred_inv[:, 1],
+        "WAT_VOL_pred": y_pred_inv[:, 2]
     })
 
     df_model["DAYTIME"] = dates_test.values
@@ -179,24 +181,25 @@ def transomer_AI():
     metadata_json = json.dumps(metadata)
 
     df_model_store = pd.DataFrame([{
-    "id_model": id_model,
-    "model_blob": model_bytes,
-    "scaler_blob": scaler_bytes,
-    "best_params": params_json,
-    "metadata": metadata_json,
-    "created_at": pd.Timestamp.now()
+        "id_model": id_model,
+        "model_blob": model_bytes,
+        "scaler_blob": scaler_bytes,
+        "best_params": params_json,
+        "metadata": metadata_json,
+        "created_at": pd.Timestamp.now()
     }])
 
-    df_model_store=pd.DataFrame([{
-                                "id_model": id_model,
-                                "created_at": pd.Timestamp.now(),
-                                "model_type": "TRANSFORMER",
-                                "mse": best_score,
-                                "look_back": window_size,
-                                "input_dim": 3,
-                                **best_params,
-                                "model": model_bytes,
-                                "scaler": scaler_bytes}])
+    df_model_store = pd.DataFrame([{
+        "id_model": id_model,
+        "created_at": pd.Timestamp.now(),
+        "model_type": "TRANSFORMER",
+        "mse": best_score,
+        "look_back": window_size,
+        "input_dim": 3,
+        **best_params,
+        "model": model_bytes,
+        "scaler": scaler_bytes
+    }])
 
     print(df_model_store.columns)
 
@@ -205,7 +208,7 @@ def transomer_AI():
 
 
 
-def TRANSFORMER_param_load(df) -> None:
+def transformer_param_load(df) -> None:
     """
     Loads data into a MySQL database using pymysql.
     """
@@ -302,9 +305,9 @@ def TRANSFORMER_param_load(df) -> None:
 
 
 
-df_model_store, df_model = transomer_AI()
+df_model_store, df_model = transformer()
 
-TRANSFORMER_param_load(df_model_store)
+transformer_param_load(df_model_store)
 model_load(df_model)
 
 

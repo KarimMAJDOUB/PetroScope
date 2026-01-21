@@ -8,13 +8,10 @@ Created on Wed Jan 14 23:02:07 2026
 import pandas as pd
 import numpy as np
 import logging
-import sys
-import os
 import uuid
 import pymysql
 import joblib
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 try:
     from src.config.sql_config import sql_settings
 except ImportError:
@@ -30,7 +27,7 @@ logger = logging.getLogger(__name__)
 # -------------------------------------------------------------------------
 # 1. MODÈLE DE PRÉDICTION
 # -------------------------------------------------------------------------
-def RF_model():
+def random_forest_model():
     logger.info("Démarrage RF (Multi-Output : Huile, Gaz, Eau à J+1)...")
 
     # A. Connexion
@@ -129,7 +126,7 @@ def RF_model():
 # -------------------------------------------------------------------------
 # 2. SAUVEGARDES
 # -------------------------------------------------------------------------
-def RF_param_load(df):
+def random_forest_param_load(df):
     try:
         connection = pymysql.connect(
             user=sql_settings.user, password=sql_settings.password,
@@ -184,7 +181,7 @@ def model_load(df):
         logger.error(f"Erreur Load: {e}")
 
 if __name__ == "__main__":
-    df_params, df_preds = RF_model()
+    df_params, df_preds = random_forest_model()
     if df_params is not None:
-        RF_param_load(df_params)
+        random_forest_param_load(df_params)
         model_load(df_preds)
