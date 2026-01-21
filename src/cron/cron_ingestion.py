@@ -1,3 +1,4 @@
+
 from apscheduler.schedulers.blocking import BlockingScheduler
 import apscheduler
 import os
@@ -5,6 +6,12 @@ import sys
 import logging
 import time 
 import sys
+
+# >>> ADD: permettre les imports depuis AI_Model (sinon "No module named 'AI_Model'")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+AI_MODEL_DIR = os.path.join(PROJECT_ROOT, "AI_Model")
+if AI_MODEL_DIR not in sys.path:
+    sys.path.append(AI_MODEL_DIR)
 
 # Import de modèle (RF) et (LSTM) ---
 
@@ -35,6 +42,18 @@ try:
 except ImportError as e:
     print(f"Attention: LSTM_AI.py non trouvé ou erreur: {e}")
     LSTM_AVAILABLE = False
+
+# >>> ADD: IA 3 — LR (ta méthode autonome)
+try:
+    from AI_Model.LR import (
+        LR_model,                      # entraîne + renvoie (df_params_lr, df_preds_lr)
+        save_params as LR_param_load,  # stocke métriques (DB si dispo, sinon CSV)
+        save_predictions as LR_save_preds  # stocke MODEL_AI (DB si dispo, sinon CSV)
+    )
+    LR_AVAILABLE = True
+except ImportError as e:
+    print(f"Attention: LR.py non trouvé ou erreur: {e}")
+    LR_AVAILABLE = False
 # -----------------------------------------
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -43,6 +62,27 @@ from ingestion.main_ingestion import ingestion
 from ETL.orchestration import ETL_orchestration
 
 logger = logging.getLogger(__name__)
+
+# >>> ADD: infra copie des plots vers AI/AI_plots (sans modifier le plotter)
+import shutil
+from glob import glob
+
+AI_DIR = os.path.join(PROJECT_ROOT, "AI")
+AI_PLOTS_DIR = os.path.join(AI_DIR, "AI_plots")
+os.makedirs(AI_PLOTS_DIR, exist_ok=True)
+
+AI_MODEL_PLOTS_DIR = os.path.join(PROJECT_ROOT, "AI_Model", "AI_plots")
+os.makedirs(AI_MODEL_PLOTS_DIR, exist_ok=True)
+
+def _copy_new_plots(model_name: str):
+    pattern = os.path.join(AI_MODEL_PLOTS_DIR, f"{model_name}_*.png")
+    for src_path in glob(pattern):
+        try:
+            dest_path = os.path.join(AI_PLOTS_DIR, os.path.basename(src_path))
+            shutil.copy2(src_path, dest_path)
+            logger.info(f"Plot {model_name} copié → {dest_path}")
+        except Exception as e:
+            logger.warning(f"Plot {model_name} : copie AI/AI_plots échouée ({e})")
 
 def get_latest_file():
     """
@@ -92,6 +132,8 @@ def cron_ingestion():
                     # --- DESSIN RF ---
                     if PLOTTER_AVAILABLE:
                         save_performance_plot(df_preds, "RF")
+                        # >>> ADD: copie vers AI/AI_plots
+                        _copy_new_plots("RF")
                         
                 logger.info(" Random Forest : Succès")
             except Exception as e:
@@ -112,6 +154,8 @@ def cron_ingestion():
                     # --- DESSIN LSTM ---
                     if PLOTTER_AVAILABLE:
                         save_performance_plot(df_model_lstm, "LSTM")
+                        # >>> ADD: copie vers AI/AI_plots
+                        _copy_new_plots("LSTM")
                         
                 logger.info(" LSTM : Succès")
             except Exception as e:
@@ -120,15 +164,37 @@ def cron_ingestion():
             logger.info(" LSTM : Non disponible")
         t1_lstm = time.time()
         
+        # >>> ADD: IA 3 — LR (exécution + stockage + plots + temps)
+        t0_lr = time.time()
+        if LR_AVAILABLE:
+            try:
+                df_params_lr, df_preds_lr = LR_model()
+                if df_params_lr is not None:
+                    LR_param_load(df_params_lr)
+                    LR_save_preds(df_preds_lr)
+
+                    if PLOTTER_AVAILABLE:
+                        save_performance_plot(df_preds_lr, "LR")
+                        _copy_new_plots("LR")
+
+                logger.info(" LR : Succès")
+            except Exception as e:
+                logger.error(f" LR : Erreur ({e})")
+        else:
+            logger.warning("LR : Non disponible")
+        t1_lr = time.time()
         
-    
+        # ======= TEMPS D'EXÉCUTION =======
         duration_rf = t1_rf - t0_rf
         duration_lstm = t1_lstm - t0_lstm
-        
         logger.info(f" TEMPS RF   : {duration_rf:.4f} s")
         if LSTM_AVAILABLE:
             logger.info(f" TEMPS LSTM : {duration_lstm:.4f} s")
-        
+
+        # >>> ADD: temps LR
+        duration_lr = t1_lr - t0_lr
+        if LR_AVAILABLE:
+            logger.info(f" TEMPS LR   : {duration_lr:.4f} s")
 
     except Exception as e:
         logger.error(f"Error in execution: {e}")
