@@ -23,7 +23,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 
-from SQL_connect_data import Call_data_sql
+from src.data_access.sql_reader import call_data_sql
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def transomer_AI():
     )
 
 
-    df = Call_data_sql("""
+    df = call_data_sql("""
             SELECT DAYTIME,
                 SUM(BORE_OIL_VOL) AS OIL_VOL,
                 SUM(BORE_GAS_VOL) AS GAS_VOL,
