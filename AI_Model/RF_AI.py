@@ -3,6 +3,8 @@
 Created on Wed Jan 14 23:02:07 2026
 
 @author: ASUS Vivibook
+
+Modifier by JPJanssen : support the insertion in the Database with main_AI.py
 """
 
 import pandas as pd
@@ -24,6 +26,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import r2_score, mean_squared_error
 
+from SQL_connect_data import Call_data_sql
+
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -44,6 +49,8 @@ def RF_model():
         query = "SELECT * FROM PWELL_DATA WHERE ON_STREAM_HRS > 0"
         df = pd.read_sql(query, connection)
         connection.close()
+
+        df=Call_data_sql('SELECT * FROM PWELL_DATA WHERE ON_STREAM_HRS > 0')
     except Exception as e:
         logger.error(f"Erreur SQL : {e}")
         return None, None
@@ -110,81 +117,105 @@ def RF_model():
     # G. Préparation Résultats
     id_model = str(uuid.uuid4())
 
+    model_path = f"models/rf_{id_model}.pkl"
+    joblib.dump(model, model_path)
+
+    # H. Préparation des paramètres
     df_params = pd.DataFrame([{
         "id_model": id_model,
         "timestamp": pd.Timestamp.now(),
         "n_estimators": 100,
+        "random_state": 42,
         "r2_score": r2,
         "mse": mse,
-        "algo": "RF_MultiOutput_J+1"
+        "algo": "RF_MultiOutput_J+1",
+        "model_path": model_path,
+        "features": ",".join(features_cols)
     }])
 
-    df_predictions = pd.DataFrame(y_pred, columns=['OIL_VOL', 'GAS_VOL', 'WAT_VOL'])
-    df_predictions["DAYTIME"] = dates_test.values + pd.Timedelta(days=1)
+    df_predictions = pd.DataFrame(
+        np.hstack([y_test.values, y_pred]),
+        columns=["OIL_VOL_test", "GAS_VOL_test", "WAT_VOL_test","OIL_VOL_pred", "GAS_VOL_pred", "WAT_VOL_pred"])
+    df_predictions["DAYTIME"] = pd.to_datetime(dates_test.values)
     df_predictions["id_model"] = id_model
     df_predictions["model_type"] = "RF"
 
-    return df_params, df_predictions
+    RF_param_load(df_params)
+   
+    return df_predictions
 
-# -------------------------------------------------------------------------
-# 2. SAUVEGARDES
-# -------------------------------------------------------------------------
 def RF_param_load(df):
+    """
+    Loads Random Forest parameters into a MySQL database using pymysql.
+    """
     try:
         connection = pymysql.connect(
-            user=sql_settings.user, password=sql_settings.password,
-            database=sql_settings.database, cursorclass=sql_settings.cursorclass
+            user=sql_settings.user,
+            password=sql_settings.password,
+            database=sql_settings.database,
+            cursorclass=sql_settings.cursorclass
         )
+        logger.info("Connection established!")
+        
         with connection.cursor() as cursor:
+            # Créer la table avec les nouveaux champs
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS RF_PARAM (
                     id_model VARCHAR(36) PRIMARY KEY,
-                    timestamp DATETIME, n_estimators INT,
-                    r2_score DECIMAL(10,5), mse DECIMAL(20,5)
+                    timestamp DATETIME,
+                    n_estimators INT,
+                    random_state INT,
+                    r2_score DECIMAL(10,5),
+                    mse DECIMAL(20,5),
+                    algo VARCHAR(50),
+                    model_path VARCHAR(255),
+                    features TEXT
                 );
-             """)
+            """)
+            
+            # Insertion avec les nouveaux champs
+            insert_query = """
+                INSERT INTO RF_PARAM 
+                (id_model, timestamp, n_estimators, random_state, r2_score, mse, algo, model_path, features)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) 
+                ON DUPLICATE KEY UPDATE 
+                    timestamp = VALUES(timestamp),
+                    r2_score = VALUES(r2_score),
+                    mse = VALUES(mse),
+                    model_path = VALUES(model_path),
+                    features = VALUES(features)
+            """
+            
             for _, row in df.iterrows():
-                cursor.execute("""
-                    INSERT INTO RF_PARAM (id_model, timestamp, n_estimators, r2_score, mse)
-                    VALUES (%s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE r2_score=VALUES(r2_score)
-                """, (row['id_model'], row['timestamp'], row['n_estimators'], row['r2_score'], row['mse']))
+                cursor.execute(
+                    insert_query,
+                    (
+                        row['id_model'],
+                        row['timestamp'],
+                        row['n_estimators'],
+                        row['random_state'],
+                        row['r2_score'],
+                        row['mse'],
+                        row['algo'],
+                        row['model_path'],
+                        row['features']
+                    )
+                )
+        
         connection.commit()
-        connection.close()
+        logger.info(f"Model parameters saved successfully with id: {df['id_model'].values[0]}")
+        
     except Exception as e:
         logger.error(f"Erreur Param: {e}")
-
-def model_load(df):
-    try:
-        connection = pymysql.connect(
-            user=sql_settings.user, password=sql_settings.password,
-            database=sql_settings.database, cursorclass=sql_settings.cursorclass
-        )
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS MODEL_AI (
-                    id_model VARCHAR(36), model_type VARCHAR(32),
-                    DAYTIME DATE, OIL_VOL DOUBLE, GAS_VOL DOUBLE, WAT_VOL DOUBLE,
-                    PRIMARY KEY(id_model, DAYTIME)
-                );
-             """)
-            for _, row in df.iterrows():
-                d = pd.to_datetime(row['DAYTIME']).date()
-                cursor.execute("""
-                    INSERT INTO MODEL_AI (id_model, model_type, DAYTIME, OIL_VOL, GAS_VOL, WAT_VOL)
-                    VALUES (%s, %s, %s, %s, %s, %s) 
-                    ON DUPLICATE KEY UPDATE 
-                        OIL_VOL = VALUES(OIL_VOL),
-                        GAS_VOL = VALUES(GAS_VOL),
-                        WAT_VOL = VALUES(WAT_VOL)
-                """, (row['id_model'], row['model_type'], d, row['OIL_VOL'], row['GAS_VOL'], row['WAT_VOL']))
-        connection.commit()
-        connection.close()
-        logger.info("Résultats sauvegardés dans MODEL_AI.")
-    except Exception as e:
-        logger.error(f"Erreur Load: {e}")
+        if 'connection' in locals():
+            connection.rollback()
+        raise
+    finally:
+        if 'connection' in locals():
+            connection.close()
+            logger.info("Connection closed")
 
 if __name__ == "__main__":
     df_params, df_preds = RF_model()
     if df_params is not None:
         RF_param_load(df_params)
-        model_load(df_preds)
