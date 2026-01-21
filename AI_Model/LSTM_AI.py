@@ -30,54 +30,95 @@ logger = logging.getLogger(__name__)
 
 
 def create_dataset(dataset, look_back):
-    X, y = [], []
-    for i in range(len(dataset) - look_back):
-        X.append(dataset[i:i+look_back, :])
-        y.append(dataset[i+look_back, :])
-    return np.array(X), np.array(y)
+    try:
+        X, y = [], []
+        for i in range(len(dataset) - look_back):
+            X.append(dataset[i:i+look_back, :])
+            y.append(dataset[i+look_back, :])
+        return np.array(X), np.array(y)
+    except Exception as e:
+        logger.error(f"Erreur lors de la création du dataset : {e}")
+        return None, None
 
 def build_model(units=64, learning_rate=0.001, look_back=20):
-    model = Sequential()
-    model.add(LSTM(units, input_shape=(look_back, 3)))
-    model.add(Dense(3))
-    model.compile(
-        optimizer=Adam(learning_rate=learning_rate),
-        loss="mse"
-    )
-    return model
+    try:
+        model = Sequential()
+        model.add(LSTM(units, input_shape=(look_back, 3)))
+        model.add(Dense(3))
+        model.compile(
+            optimizer=Adam(learning_rate=learning_rate),
+            loss="mse"
+        )
+        return model
+    except Exception as e:
+        logger.error(f"Erreur lors de la création du modèle LSTM : {e}")
+        return None
 
 def LSTM_model():
+    try:
+        df = call_data_sql("""
+            SELECT DAYTIME,
+                SUM(BORE_OIL_VOL) AS OIL_VOL,
+                SUM(BORE_GAS_VOL) AS GAS_VOL,
+                SUM(BORE_WAT_VOL) AS WAT_VOL
+            FROM PWELL_DATA
+            GROUP BY DAYTIME
+        """)
+    except Exception as e:
+        logger.error(f"Erreur récupération des données SQL : {e}")
+        return None, None, None, None
 
-    df = call_data_sql("""
-        SELECT DAYTIME,
-            SUM(BORE_OIL_VOL) AS OIL_VOL,
-            SUM(BORE_GAS_VOL) AS GAS_VOL,
-            SUM(BORE_WAT_VOL) AS WAT_VOL
-        FROM PWELL_DATA
-        GROUP BY DAYTIME
-    """)
+    if df is None or df.empty:
+        logger.error("Erreur : aucun résultat récupéré depuis SQL.")
+        return None, None, None, None
 
-    df["DAYTIME"] = pd.to_datetime(df["DAYTIME"])
+    try:
+        df["DAYTIME"] = pd.to_datetime(df["DAYTIME"])
+    except Exception as e:
+        logger.error(f"Erreur conversion DAYTIME en datetime : {e}")
+        return None, None, None, None
+
     df = df.sort_values("DAYTIME").reset_index(drop=True)
 
-    values = df[["OIL_VOL", "GAS_VOL", "WAT_VOL"]].values.astype("float32")
+    try:
+        values = df[["OIL_VOL", "GAS_VOL", "WAT_VOL"]].values.astype("float32")
+    except KeyError as e:
+        logger.error(f"Colonnes attendues absentes : {e}")
+        return None, None, None, None
+    except Exception as e:
+        logger.error(f"Erreur préparation des données : {e}")
+        return None, None, None, None
 
-    scaler = MinMaxScaler()
-    values_scaled = scaler.fit_transform(values)
+    try:
+        scaler = MinMaxScaler()
+        values_scaled = scaler.fit_transform(values)
+    except Exception as e:
+        logger.error(f"Erreur lors du scaling des données : {e}")
+        return None, None, None, None
 
     look_back = 20
 
-    X, y = create_dataset(values_scaled, look_back)
+    try:
+        X, y = create_dataset(values_scaled, look_back)
+        if X is None or y is None:
+            return None, None, None, None
+    except Exception as e:
+        logger.error(f"Erreur création du dataset LSTM : {e}")
+        return None, None, None, None
 
-    split = int(len(X) * 0.8)
+    try:
+        split = int(len(X) * 0.8)
+        X_train, X_test = X[:split], X[split:]
+        y_train, y_test = y[:split], y[split:]
+    except Exception as e:
+        logger.error(f"Erreur découpage train/test : {e}")
+        return None, None, None, None
 
-    X_train, X_test = X[:split], X[split:]
-    y_train, y_test = y[:split], y[split:]
-
-    regressor = KerasRegressor(
-        model=build_model,
-        verbose=0
-    )
+    try:
+        regressor = KerasRegressor(model=build_model, verbose=0)
+    except Exception as e:
+        logger.error(f"Erreur création du KerasRegressor : {e}")
+        return None, None, None, None
 
     param_grid = {
         "model__units": [32, 64],
@@ -88,52 +129,62 @@ def LSTM_model():
 
     tscv = TimeSeriesSplit(n_splits=3)
 
-    grid = RandomizedSearchCV(
-        estimator=regressor,
-        param_distributions=param_grid,
-        n_iter=5,
-        cv=tscv,
-        scoring="neg_mean_squared_error",
-        verbose=2,
-        random_state=42
-    )
+    try:
+        grid = RandomizedSearchCV(
+            estimator=regressor,
+            param_distributions=param_grid,
+            n_iter=5,
+            cv=tscv,
+            scoring="neg_mean_squared_error",
+            verbose=2,
+            random_state=42
+        )
+        grid.fit(X_train, y_train)
+    except Exception as e:
+        logger.error(f"Erreur lors du RandomizedSearchCV : {e}")
+        return None, None, None, None
 
-    grid.fit(X_train, y_train)
+    try:
+        best_model = grid.best_estimator_
+        y_pred = best_model.predict(X_test)
+        y_pred_inv = scaler.inverse_transform(y_pred)
+        y_test_inv = scaler.inverse_transform(y_test)
+        time_test = df["DAYTIME"].iloc[look_back + split : look_back + split + len(y_pred)]
+    except Exception as e:
+        logger.error(f"Erreur lors de la prédiction ou inverse scaling : {e}")
+        return None, None, None, None
 
-    best_model = grid.best_estimator_
+    try:
+        best_params = grid.best_params_
+        best_score = (-grid.best_score_) 
+        id_model = str(uuid.uuid4())
 
-    y_pred = best_model.predict(X_test)
+        df_best = pd.DataFrame([best_params])
+        df_best["mse"] = best_score
+        df_best["look_back"] = look_back  
+        df_best["timestamp"] = pd.Timestamp.now()
+        df_best["id_model"]=id_model  
 
-    y_pred_inv = scaler.inverse_transform(y_pred)
-    y_test_inv = scaler.inverse_transform(y_test)
+        df_model = pd.DataFrame(
+            data_test=y_test_inv,
+            data_pred=y_pred_inv,
+            columns=["OIL_VOL_test", "GAS_VOL_test", "WAT_VOL_test","OIL_VOL_pred", "GAS_VOL_pred", "WAT_VOL_pred"]
+        )
 
-    time_test = df["DAYTIME"].iloc[look_back + split : look_back + split + len(y_pred)]
-    best_params = grid.best_params_
-    best_score = (-grid.best_score_) 
+        df_model["DAYTIME"] = pd.to_datetime(time_test.values)
+        df_model["id_model"] = id_model
+        df_model["model_type"] = "LSTM"
+    except Exception as e:
+        logger.error(f"Erreur création des DataFrames de sortie : {e}")
+        return None, None, None, None
 
-    id_model=str(uuid.uuid4())
+    return df_best, df_model, best_model, scaler
 
-    df_best = pd.DataFrame([best_params])
-    df_best["mse"] = best_score
-    df_best["look_back"] = look_back  
-    df_best["timestamp"] = pd.Timestamp.now()
-    df_best["id_model"]=id_model  
-
-    df_model = pd.DataFrame(
-    data_test=y_test_inv,
-    data_pred=y_pred_inv,
-    columns=["OIL_VOL_test", "GAS_VOL_test", "WAT_VOL_test","OIL_VOL_pred", "GAS_VOL_pred", "WAT_VOL_pred"]
-    )
-
-    df_model["DAYTIME"] = pd.to_datetime(time_test.values)
-    df_model["id_model"] = id_model
-    df_model["model_type"] = "LSTM"
-    
-    return df_best,df_model,best_model, scaler
 
 def LSTM_param_load(df) -> None:
     """
     Loads data into a MySQL database using pymysql.
+    Messages d'erreur ajoutés pour le suivi de la connexion et des insertions.
     """
     try:
         connection = pymysql.connect(
@@ -145,7 +196,10 @@ def LSTM_param_load(df) -> None:
         logger.info(f"Connection established!")
     except pymysql.err.OperationalError as e:
         logger.error(f"Connection failed: {e}")
-    
+        return
+    except Exception as e:
+        logger.error(f"Erreur inattendue lors de la connexion MySQL : {e}")
+        return
 
     try:
         with connection.cursor() as cursor:
@@ -184,25 +238,29 @@ def LSTM_param_load(df) -> None:
             """
 
             for _, row in df.iterrows():
-                cursor.execute(
-                    insert_objects,
-                    (
-                        row['id_model'],
-                        row['timestamp'],
-                        row['model__units'],
-                        row['model__learning_rate'],
-                        row['epochs'],
-                        row['batch_size'],
-                        row['mse'],
-                        row['look_back']
+                try:
+                    cursor.execute(
+                        insert_objects,
+                        (
+                            row['id_model'],
+                            row['timestamp'],
+                            row['model__units'],
+                            row['model__learning_rate'],
+                            row['epochs'],
+                            row['batch_size'],
+                            row['mse'],
+                            row['look_back']
+                        )
                     )
-                )
+                except Exception as e:
+                    logger.error(f"Erreur insertion ligne {row['id_model']} : {e}")
 
         connection.commit()
+    except Exception as e:
+        logger.error(f"Erreur lors de la création ou insertion dans la table LSTM_PARAM : {e}")
     finally:
-        logger.info("Connection closed")
-        connection.close()
-
-
-
-
+        try:
+            connection.close()
+            logger.info("Connection closed")
+        except Exception as e:
+            logger.error(f"Erreur fermeture connexion MySQL : {e}")
