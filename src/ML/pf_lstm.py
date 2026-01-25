@@ -11,98 +11,188 @@ import joblib
 import pymysql
 from sklearn.preprocessing import MinMaxScaler
 from skorch import NeuralNetRegressor
+<<<<<<< HEAD:src/ML/pf_lstm.py
 import matplotlib.pyplot as plt
+=======
+>>>>>>> e44f567472de3b0582bcfd6c4e3a55e44ee5fa47:AI_Model/PF_AI.py
 
 from src.data_access.sql_reader import call_data_sql
 from src.ml.lstm import lstm_model
 from src.ml.transformer import transformer_model
 from src.ml.model_load import pf_load
 
+<<<<<<< HEAD:src/ML/pf_lstm.py
 def pf_lstm(n_days):
 
     df_best, df_model, best_estimator, scaler = lstm_model()
+=======
+logger = logging.getLogger(__name__)
 
-    model = best_estimator.model_
 
-    look_back = int(df_best["look_back"].iloc[0])
-    n_features = 3
+def PF_LSTM(n_days):
+    try:
+        df_best, df_model, best_estimator, scaler = LSTM_model()
 
-    df=df_model
+        model = best_estimator.model_
+>>>>>>> e44f567472de3b0582bcfd6c4e3a55e44ee5fa47:AI_Model/PF_AI.py
 
-    values = df[["OIL_VOL", "GAS_VOL", "WAT_VOL"]].values.astype("float32")
+        look_back = int(df_best["look_back"].iloc[0])
+        n_features = 3
 
-    last_values = values[-look_back:]
-    last_values_scaled = scaler.transform(last_values)
+        df = df_model
 
-    current_seq = last_values_scaled.reshape(1, look_back, n_features)
+        values = df[["OIL_VOL", "GAS_VOL", "WAT_VOL"]].values.astype("float32")
 
-    forecast_scaled = []
+        last_values = values[-look_back:]
+        last_values_scaled = scaler.transform(last_values)
 
-    for _ in range(n_days):
-        next_step = model.predict(current_seq, verbose=0)
-        forecast_scaled.append(next_step[0])
+        current_seq = last_values_scaled.reshape(1, look_back, n_features)
 
-    current_seq = np.concatenate(
-        (current_seq[:, 1:, :],
-            next_step.reshape(1, 1, n_features)),
-        axis=1
-    )
+        forecast_scaled = []
 
-    forecast_scaled = np.array(forecast_scaled)
-    forecast = scaler.inverse_transform(forecast_scaled)
+        for _ in range(n_days):
+            next_step = model.predict(current_seq, verbose=0)
+            forecast_scaled.append(next_step[0])
 
-    last_date = df["DAYTIME"].iloc[-1]
+            current_seq = np.concatenate(
+                (current_seq[:, 1:, :],
+                 next_step.reshape(1, 1, n_features)),
+                axis=1
+            )
 
-    future_dates = pd.date_range(
-    start=last_date + pd.Timedelta(days=1),
-    periods=n_days,
-    freq="D"
-    )
+        forecast_scaled = np.array(forecast_scaled)
+        forecast = scaler.inverse_transform(forecast_scaled)
 
-    df_forecast = pd.DataFrame(
-    forecast,
-    columns=["OIL_VOL", "GAS_VOL", "WAT_VOL"]
-    )
+        last_date = df["DAYTIME"].iloc[-1]
 
-    df_forecast["DAYTIME"] = future_dates
-    df_forecast["id_model"] = df_best["id_model"].iloc[0]
-    df_forecast["model_type"] = "LSTM_FORECAST"
+        future_dates = pd.date_range(
+            start=last_date + pd.Timedelta(days=1),
+            periods=n_days,
+            freq="D"
+        )
 
-    return df_forecast
+        df_forecast = pd.DataFrame(
+            forecast,
+            columns=["OIL_VOL", "GAS_VOL", "WAT_VOL"]
+        )
+
+        df_forecast["DAYTIME"] = future_dates
+        df_forecast["id_model"] = df_best["id_model"].iloc[0]
+        df_forecast["model_type"] = "LSTM_FORECAST"
+
+        return df_forecast
+
+    except Exception as e:
+        logger.exception(f"Error : {e}")
+        raise
+
 
 def predict_future_from_saved_model(id_model, n_days):
     """
     Charge un modèle sauvegardé et prédit les n prochains jours
     """
-    # Récupérer les paramètres et le modèle depuis la DB
-    df_params = call_data_sql(f"""
-        SELECT * FROM TRANSFORMER_PARAM 
-        WHERE id_model = '{id_model}'
-    """)
-    
+    try:
+        df_params = call_data_sql(f"""
+            SELECT * FROM TRANSFORMER_PARAM 
+            WHERE id_model = '{id_model}'
+        """)
+    except Exception as e:
+        logger.exception(f"SQL error while loading model parameters: {e}")
+        raise
+
     if df_params.empty:
+        logger.error(f"Model {id_model} not found in database")
         raise ValueError(f"Modèle {id_model} non trouvé")
-    
-    row = df_params.iloc[0]
-    
-    # Charger le scaler
-    scaler = joblib.load(io.BytesIO(row['scaler']))
-    
-    # Recréer le modèle avec les mêmes paramètres
-    net = NeuralNetRegressor(
-        module=transformer_model,
-        module__input_dim=int(row['input_dim']),
-        module__d_model=int(row['module__d_model']),
-        module__nhead=int(row['module__nhead']),
-        module__num_layers=int(row['module__num_layers']),
-        module__dropout=float(row['module__dropout']),
-        max_epochs=10,
-        lr=float(row['lr']),
-        batch_size=int(row['batch_size']),
-        optimizer=torch.optim.Adam,
-        criterion=nn.MSELoss,
-        device="cpu"
+
+    try:
+        row = df_params.iloc[0]
+
+        scaler = joblib.load(io.BytesIO(row['scaler']))
+
+        net = NeuralNetRegressor(
+            module=transformer_model,
+            module__input_dim=int(row['input_dim']),
+            module__d_model=int(row['module__d_model']),
+            module__nhead=int(row['module__nhead']),
+            module__num_layers=int(row['module__num_layers']),
+            module__dropout=float(row['module__dropout']),
+            max_epochs=10,
+            lr=float(row['lr']),
+            batch_size=int(row['batch_size']),
+            optimizer=torch.optim.Adam,
+            criterion=nn.MSELoss,
+            device="cpu"
+        )
+
+        net.initialize()
+        net.module_.load_state_dict(torch.load(io.BytesIO(row['model'])))
+
+    except Exception as e:
+        logger.exception(f"Error while loading model/scaler for id_model={id_model}: {e}")
+        raise
+
+    try:
+        look_back = int(row['look_back'])
+
+        df = call_data_sql("""
+            SELECT DAYTIME,
+                SUM(BORE_OIL_VOL) AS OIL_VOL,
+                SUM(BORE_GAS_VOL) AS GAS_VOL,
+                SUM(BORE_WAT_VOL) AS WAT_VOL
+            FROM PWELL_DATA
+            GROUP BY DAYTIME
+            ORDER BY DAYTIME ASC
+        """)
+
+        df = df.tail(look_back).reset_index(drop=True)
+        df["DAYTIME"] = pd.to_datetime(df["DAYTIME"])
+
+        values = df[["OIL_VOL", "GAS_VOL", "WAT_VOL"]].values.astype("float32")
+
+        last_sequence = scaler.transform(values)
+
+        predictions = []
+        current_sequence = last_sequence.copy()
+        input_dim = int(row['input_dim'])
+
+        for _ in range(n_days):
+            pred = net.predict(current_sequence.reshape(1, look_back, input_dim))
+            predictions.append(pred[0])
+            current_sequence = np.vstack([current_sequence[1:], pred[0]])
+
+        predictions = np.array(predictions)
+        predictions_inv = scaler.inverse_transform(predictions)
+
+        last_date = df["DAYTIME"].iloc[-1]
+        future_dates = pd.date_range(
+            start=last_date + pd.Timedelta(days=1),
+            periods=n_days
+        )
+
+        df_future = pd.DataFrame({
+            "DAYTIME": future_dates,
+            "OIL_VOL_pred": predictions_inv[:, 0],
+            "GAS_VOL_pred": predictions_inv[:, 1],
+            "WAT_VOL_pred": predictions_inv[:, 2],
+            "id_model": id_model,
+            "model_type": row['model_type']
+        })
+
+        return df_future
+
+    except Exception as e:
+        logger.exception(f"Error during future prediction for model {id_model}: {e}")
+        raise
+
+
+try:
+    PF_Load(
+        predict_future_from_saved_model(
+            "5dca9ac6-19f4-4f8f-bdac-181d455f5555",
+            n_days=90
+        )
     )
+<<<<<<< HEAD:src/ML/pf_lstm.py
     
     # Charger les poids
     net.initialize()
@@ -160,3 +250,7 @@ def predict_future_from_saved_model(id_model, n_days):
 
 pf_load(predict_future_from_saved_model("5dca9ac6-19f4-4f8f-bdac-181d455f5555", n_days=90))
 
+=======
+except Exception as e:
+    logger.exception(f"Final PF_Load execution failed: {e}")
+>>>>>>> e44f567472de3b0582bcfd6c4e3a55e44ee5fa47:AI_Model/PF_AI.py
