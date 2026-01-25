@@ -12,6 +12,14 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.dirname(current_dir)                 
 sys.path.append(src_dir)
 
+# --- 1. IMPORT DU PLOTTER
+try:
+    from AI_Model.AI_Plotter import save_performance_plot
+    PLOTTER_AVAILABLE = True
+except ImportError as e:
+    print(f"Attention: AI_Plotter.py non trouvé: {e}")
+    PLOTTER_AVAILABLE = False
+
 try:
     from AI_Model.RF_AI import RF_model, RF_param_load, model_load as model_save
     RF_AVAILABLE = True
@@ -72,6 +80,7 @@ def cron_ingestion():
         
         logger.info("--- Démarrage calcul IA ---")
         
+        # === IA 1 : RF ===
         t0_rf = time.time()
         if RF_AVAILABLE:
             try:
@@ -79,6 +88,11 @@ def cron_ingestion():
                 if df_params is not None:
                     RF_param_load(df_params)
                     model_save(df_preds)
+                    
+                    # --- DESSIN RF ---
+                    if PLOTTER_AVAILABLE:
+                        save_performance_plot(df_preds, "RF")
+                        
                 logger.info(" Random Forest : Succès")
             except Exception as e:
                 logger.error(f" Random Forest : Erreur ({e})")
@@ -94,6 +108,11 @@ def cron_ingestion():
                 if df_best is not None:
                     LSTM_param_load(df_best)
                     LSTM_save_preds(df_model_lstm)
+                    
+                    # --- DESSIN LSTM ---
+                    if PLOTTER_AVAILABLE:
+                        save_performance_plot(df_model_lstm, "LSTM")
+                        
                 logger.info(" LSTM : Succès")
             except Exception as e:
                 logger.error(f" LSTM : Erreur ({e})")

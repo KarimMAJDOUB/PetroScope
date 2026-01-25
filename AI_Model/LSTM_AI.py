@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.config.sql_config import sql_settings
 
 from datetime import datetime
-from SQL_connect_data import Call_data_sql
+from src.data_access.sql_reader import call_data_sql
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
@@ -51,7 +51,7 @@ def build_model(units=64, learning_rate=0.001, look_back=20):
 
 def LSTM_model():
 
-    df = Call_data_sql("""
+    df = call_data_sql("""
         SELECT DAYTIME,
             SUM(BORE_OIL_VOL) AS OIL_VOL,
             SUM(BORE_GAS_VOL) AS GAS_VOL,

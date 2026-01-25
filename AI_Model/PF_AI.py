@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from skorch import NeuralNetRegressor
 
 
-from SQL_connect_data import Call_data_sql
+from src.data_access.sql_reader import call_data_sql
 from LSTM_AI import LSTM_model
 from TRANSFORMER_AI import transformer_model
 from Model_Load import PF_Load
@@ -79,7 +79,7 @@ def predict_future_from_saved_model(id_model, n_days):
     Charge un modèle sauvegardé et prédit les n prochains jours
     """
     # Récupérer les paramètres et le modèle depuis la DB
-    df_params = Call_data_sql(f"""
+    df_params = call_data_sql(f"""
         SELECT * FROM TRANSFORMER_PARAM 
         WHERE id_model = '{id_model}'
     """)
@@ -114,7 +114,7 @@ def predict_future_from_saved_model(id_model, n_days):
     
     # Récupérer les dernières données
     look_back = int(row['look_back'])
-    df = Call_data_sql(f"""
+    df = call_data_sql(f"""
         SELECT DAYTIME,
             SUM(BORE_OIL_VOL) AS OIL_VOL,
             SUM(BORE_GAS_VOL) AS GAS_VOL,
