@@ -9,7 +9,20 @@ import torch
 import torch.nn as nn
 import joblib
 import pymysql
+<<<<<<< HEAD:src/ML/transformer.py
 from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit, train_test_split
+=======
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from src.config.sql_config import sql_settings
+
+from skorch import NeuralNetRegressor
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
+from sklearn.model_selection import train_test_split
+>>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/TRANSFORMER_AI.py
 from sklearn.preprocessing import StandardScaler
 from skorch import NeuralNetRegressor
 
@@ -62,6 +75,7 @@ def transformer_model(input_dim=3, d_model=64, nhead=4, num_layers=2, dropout=0.
 
     return Model()
 
+<<<<<<< HEAD:src/ML/transformer.py
 def transformer():
     net=NeuralNetRegressor(
         module=transformer_model, 
@@ -81,17 +95,30 @@ def transformer():
     #     "lr": [1e-4, 3e-4, 1e-3],
     #     "batch_size": [16, 32, 64]
     # }
+=======
+def transformer_AI():
+    net = NeuralNetRegressor(
+        module=transformer_model, 
+        module__input_dim=3, 
+        max_epochs=10, 
+        lr=1e-4, 
+        batch_size=32, 
+        optimizer=torch.optim.Adam, 
+        criterion=nn.MSELoss, 
+        device="cpu"
+    )
+>>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/TRANSFORMER_AI.py
 
     param_distributions = {
-        "module__d_model": [64],
-        "module__nhead": [4],
-        "module__num_layers": [2],
-        "module__dropout": [0.1],
-        "lr": [1e-4],
-        "batch_size": [16]
+        "module__d_model": [32, 64],
+        "module__nhead": [2, 4],
+        "module__num_layers": [1, 2],
+        "module__dropout": [0.0, 0.1, 0.2],
+        "lr": [1e-4, 3e-4, 1e-3],
+        "batch_size": [16, 32, 64]
     }
 
-    tscv=TimeSeriesSplit(n_splits=3)
+    tscv = TimeSeriesSplit(n_splits=3)
 
     search = RandomizedSearchCV(
         estimator=net,
@@ -103,8 +130,7 @@ def transformer():
         refit=True
     )
 
-
-    df = call_data_sql("""
+    df = Call_data_sql("""
             SELECT DAYTIME,
                 SUM(BORE_OIL_VOL) AS OIL_VOL,
                 SUM(BORE_GAS_VOL) AS GAS_VOL,
@@ -118,12 +144,10 @@ def transformer():
 
     values = df[["OIL_VOL", "GAS_VOL", "WAT_VOL"]].values.astype("float32")
 
-
     scaler = StandardScaler()
     values = scaler.fit_transform(values)
 
-
-    window_size=30
+    window_size = 30
 
     X, y = create_dataset(values, window_size)
 
@@ -142,7 +166,18 @@ def transformer():
     y_pred_inv = scaler.inverse_transform(y_pred)
     y_test_inv = scaler.inverse_transform(y_test)
 
-    id_model=str(uuid.uuid4())
+    # Générer l'ID unique du modèle
+    id_model = str(uuid.uuid4())
+
+    # Créer le dossier models s'il n'existe pas
+    os.makedirs("models", exist_ok=True)
+
+    # Sauvegarder le modèle et le scaler dans des fichiers
+    model_path = f"models/transformer_{id_model}.pth"
+    scaler_path = f"models/scaler_{id_model}.pkl"
+
+    torch.save(best_model.module_.state_dict(), model_path)
+    joblib.dump(scaler, scaler_path)
 
     df_model = pd.DataFrame({
         "OIL_VOL_test": y_test_inv[:, 0],
@@ -157,24 +192,18 @@ def transformer():
     df_model["id_model"] = id_model
     df_model["model_type"] = "TRANSFORMER"
 
-    buffer = io.BytesIO()
-    torch.save(best_model.module_.state_dict(), buffer)
-    model_bytes = buffer.getvalue()
-
-        
-    buffer = io.BytesIO()
-    joblib.dump(scaler, buffer)
-    scaler_bytes = buffer.getvalue()
-
     best_params = search.best_params_
-    best_score = search.best_score_
+    best_score = -search.best_score_  # Convertir en valeur positive
 
-    params_json = json.dumps(best_params)
-
-    metadata = {
+    # Préparer df_model_store avec les chemins de fichiers
+    df_model_store = pd.DataFrame([{
+        "id_model": id_model,
+        "created_at": pd.Timestamp.now(),
+        "model_type": "TRANSFORMER",
         "mse": best_score,
         "look_back": window_size,
         "input_dim": 3,
+<<<<<<< HEAD:src/ML/transformer.py
         "model_type": "TRANSFORMER"
     }
 
@@ -205,12 +234,26 @@ def transformer():
 
     return df_model_store, df_model
 
+=======
+        "module__num_layers": best_params.get("module__num_layers"),
+        "module__nhead": best_params.get("module__nhead"),
+        "module__dropout": best_params.get("module__dropout"),
+        "module__d_model": best_params.get("module__d_model"),
+        "lr": best_params.get("lr"),
+        "batch_size": best_params.get("batch_size"),
+        "model_path": model_path,
+        "scaler_path": scaler_path
+    }])
 
+    TRANSFORMER_param_load(df_model_store)
+>>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/TRANSFORMER_AI.py
+
+    return df_model
 
 
 def transformer_param_load(df) -> None:
     """
-    Loads data into a MySQL database using pymysql.
+    Loads Transformer parameters into a MySQL database using pymysql.
     """
     try:
         connection = pymysql.connect(
@@ -222,10 +265,11 @@ def transformer_param_load(df) -> None:
         logger.info(f"Connection established!")
     except pymysql.err.OperationalError as e:
         logger.error(f"Connection failed: {e}")
-    
+        raise
 
     try:
         with connection.cursor() as cursor:
+            # Créer la table avec model_path et scaler_path au lieu de BLOB
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS TRANSFORMER_PARAM (
                     id_model VARCHAR(36) PRIMARY KEY,
@@ -240,10 +284,11 @@ def transformer_param_load(df) -> None:
                     module__d_model INT,
                     lr FLOAT,
                     batch_size INT,
-                    model LONGBLOB,
-                    scaler LONGBLOB
+                    model_path VARCHAR(255),
+                    scaler_path VARCHAR(255)
                 );
             """)
+            
             insert_objects = """
                 INSERT INTO TRANSFORMER_PARAM
                 (id_model,
@@ -258,8 +303,8 @@ def transformer_param_load(df) -> None:
                 module__d_model,
                 lr,
                 batch_size,
-                model,
-                scaler)
+                model_path,
+                scaler_path)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 created_at = VALUES(created_at),
@@ -273,8 +318,8 @@ def transformer_param_load(df) -> None:
                 module__d_model = VALUES(module__d_model),
                 lr = VALUES(lr),
                 batch_size = VALUES(batch_size),
-                model = VALUES(model),
-                scaler = VALUES(scaler);
+                model_path = VALUES(model_path),
+                scaler_path = VALUES(scaler_path);
             """
 
             for _, row in df.iterrows():
@@ -293,15 +338,21 @@ def transformer_param_load(df) -> None:
                         row['module__d_model'],
                         row['lr'],
                         row['batch_size'],
-                        row['model'],
-                        row['scaler']
+                        row['model_path'],
+                        row['scaler_path']
                     )
                 )
 
         connection.commit()
+        logger.info(f"Model parameters saved successfully with id: {df['id_model'].values[0]}")
+    except Exception as e:
+        logger.error(f"Error saving parameters: {e}")
+        connection.rollback()
+        raise
     finally:
         logger.info("Connection closed")
         connection.close()
+<<<<<<< HEAD:src/ML/transformer.py
 
 
 
@@ -311,3 +362,5 @@ transformer_param_load(df_model_store)
 model_load(df_model)
 
 
+=======
+>>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/TRANSFORMER_AI.py
