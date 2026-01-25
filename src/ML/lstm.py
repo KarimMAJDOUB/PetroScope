@@ -74,7 +74,11 @@ def LSTM_model():
     except Exception as e:
         logger.error(f"Erreur récupération des données SQL : {e}")
         return None, None, None, None
+<<<<<<< HEAD
+>>>>>>> e44f567472de3b0582bcfd6c4e3a55e44ee5fa47:AI_Model/LSTM_AI.py
+=======
 >>>>>>> 8f058a33853817aea7c226a1d00c0e7c41fbc093:AI_Model/LSTM_AI.py
+>>>>>>> cc17ef805e12af0421793b76320e55f3ff0dd227
 
     if df is None or df.empty:
         logger.error("Erreur : aucun résultat récupéré depuis SQL.")
@@ -215,7 +219,11 @@ def LSTM_model():
 =======
     return df_best, df_model, best_model, scaler
 
+<<<<<<< HEAD
+>>>>>>> e44f567472de3b0582bcfd6c4e3a55e44ee5fa47:AI_Model/LSTM_AI.py
+=======
 >>>>>>> 8f058a33853817aea7c226a1d00c0e7c41fbc093:AI_Model/LSTM_AI.py
+>>>>>>> cc17ef805e12af0421793b76320e55f3ff0dd227
 
     LSTM_param_load(df_best)
     
@@ -242,7 +250,11 @@ def lstm_param_load(df) -> None:
     except Exception as e:
         logger.error(f"Erreur inattendue lors de la connexion MySQL : {e}")
         return
+<<<<<<< HEAD
+>>>>>>> e44f567472de3b0582bcfd6c4e3a55e44ee5fa47:AI_Model/LSTM_AI.py
+=======
 >>>>>>> 8f058a33853817aea7c226a1d00c0e7c41fbc093:AI_Model/LSTM_AI.py
+>>>>>>> cc17ef805e12af0421793b76320e55f3ff0dd227
 
     try:
         with connection.cursor() as cursor:
@@ -323,7 +335,11 @@ def lstm_param_load(df) -> None:
                 except Exception as e:
                     logger.error(f"Erreur insertion ligne {row['id_model']} : {e}")
 
+<<<<<<< HEAD
+>>>>>>> e44f567472de3b0582bcfd6c4e3a55e44ee5fa47:AI_Model/LSTM_AI.py
+=======
 >>>>>>> 8f058a33853817aea7c226a1d00c0e7c41fbc093:AI_Model/LSTM_AI.py
+>>>>>>> cc17ef805e12af0421793b76320e55f3ff0dd227
         connection.commit()
     except Exception as e:
         logger.error(f"Erreur lors de la création ou insertion dans la table LSTM_PARAM : {e}")
