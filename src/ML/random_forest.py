@@ -141,17 +141,10 @@ def random_forest_model():
    
     return df_predictions
 
-<<<<<<< HEAD:src/ML/random_forest.py
-# -------------------------------------------------------------------------
-# 2. SAUVEGARDES
-# -------------------------------------------------------------------------
-def random_forest_param_load(df):
-=======
 def RF_param_load(df):
     """
     Loads Random Forest parameters into a MySQL database using pymysql.
     """
->>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/RF_AI.py
     try:
         connection = pymysql.connect(
             user=sql_settings.user,
@@ -222,9 +215,4 @@ def RF_param_load(df):
 if __name__ == "__main__":
     df_params, df_preds = random_forest_model()
     if df_params is not None:
-<<<<<<< HEAD:src/ML/random_forest.py
-        random_forest_param_load(df_params)
-        model_load(df_preds)
-=======
         RF_param_load(df_params)
->>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/RF_AI.py
