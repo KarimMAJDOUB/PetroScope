@@ -3,6 +3,7 @@ import pandas as pd
 import pymysql
 import logging
 import uuid
+import joblib
 
 from src.config.sql_config import sql_settings
 
@@ -29,9 +30,11 @@ def create_dataset(dataset, look_back):
     return np.array(X), np.array(y)
 
 def build_model(units=64, learning_rate=0.001, look_back=20):
-    model = Sequential()
-    model.add(LSTM(units, input_shape=(look_back, 3)))
-    model.add(Dense(3))
+    model = Sequential([
+        tf.keras.layers.Input(shape=(look_back, 3)),
+        LSTM(units),
+        Dense(3)
+    ])
     model.compile(
         optimizer=Adam(learning_rate=learning_rate),
         loss="mse"
@@ -103,25 +106,35 @@ def lstm_model():
     best_params = grid.best_params_
     best_score = (-grid.best_score_) 
 
-    id_model=str(uuid.uuid4())
+    os.makedirs("models", exist_ok=True)
+    
+    id_model = str(uuid.uuid4())
+    
+    # Sauvegarder le modèle et le scaler
+    model_path = f"models/lstm_{id_model}.keras"
+    scaler_path = f"models/scaler_{id_model}.pkl"
+    
+    best_model.model_.save(model_path)
+    joblib.dump(scaler, scaler_path)
 
     df_best = pd.DataFrame([best_params])
     df_best["mse"] = best_score
     df_best["look_back"] = look_back  
     df_best["timestamp"] = pd.Timestamp.now()
-    df_best["id_model"]=id_model  
+    df_best["id_model"] = id_model
+    df_best["model_path"] = model_path
+    df_best["scaler_path"] = scaler_path
 
     df_model = pd.DataFrame(
-    data_test=y_test_inv,
-    data_pred=y_pred_inv,
-    columns=["OIL_VOL_test", "GAS_VOL_test", "WAT_VOL_test","OIL_VOL_pred", "GAS_VOL_pred", "WAT_VOL_pred"]
-    )
-
+        np.hstack([y_test_inv, y_pred_inv]),
+        columns=["OIL_VOL_test", "GAS_VOL_test", "WAT_VOL_test","OIL_VOL_pred", "GAS_VOL_pred", "WAT_VOL_pred"])
     df_model["DAYTIME"] = pd.to_datetime(time_test.values)
     df_model["id_model"] = id_model
     df_model["model_type"] = "LSTM"
+
+    LSTM_param_load(df_best)
     
-    return df_best,df_model,best_model, scaler
+    return df_model
 
 def lstm_param_load(df) -> None:
     """
@@ -141,30 +154,36 @@ def lstm_param_load(df) -> None:
 
     try:
         with connection.cursor() as cursor:
+            # Créer la table avec les nouveaux champs
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS LSTM_PARAM (
-                    id_model VARCHAR(36) PRIMARY KEY ,
+                    id_model VARCHAR(36) PRIMARY KEY,
                     timestamp DATETIME,
                     model__units INT,
                     model__learning_rate DECIMAL(10,10),
                     epochs INT,
                     batch_size INT,
                     mse DECIMAL(10,10),
-                    look_back INT
+                    look_back INT,
+                    model_path VARCHAR(255),
+                    scaler_path VARCHAR(255)
                 ); 
             """)
 
+            # Insertion avec les nouveaux champs
             insert_objects = """
                 INSERT INTO LSTM_PARAM
                 (id_model,
                     timestamp,
-                    model__units  ,
-                    model__learning_rate  ,
-                    epochs  ,
-                    batch_size  ,
-                    mse  ,
-                    look_back)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    model__units,
+                    model__learning_rate,
+                    epochs,
+                    batch_size,
+                    mse,
+                    look_back,
+                    model_path,
+                    scaler_path)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     timestamp = VALUES(timestamp),
                     model__units = VALUES(model__units),
@@ -172,7 +191,9 @@ def lstm_param_load(df) -> None:
                     epochs = VALUES(epochs),
                     batch_size = VALUES(batch_size),
                     mse = VALUES(mse),
-                    look_back  = VALUES(look_back);
+                    look_back = VALUES(look_back),
+                    model_path = VALUES(model_path),
+                    scaler_path = VALUES(scaler_path);
             """
 
             for _, row in df.iterrows():
@@ -186,10 +207,11 @@ def lstm_param_load(df) -> None:
                         row['epochs'],
                         row['batch_size'],
                         row['mse'],
-                        row['look_back']
+                        row['look_back'],
+                        row['model_path'],
+                        row['scaler_path']
                     )
                 )
-
         connection.commit()
     finally:
         logger.info("Connection closed")
