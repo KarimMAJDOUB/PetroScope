@@ -1,7 +1,7 @@
 import pandas as pd
 import logging
 from sqlalchemy import create_engine
-from config.sql_config import sql_settings
+from src.config.sql_config import sql_settings
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from config.sql_config import sql_settings
+from src.config.sql_config import sql_settings
 
 def create_ml_tables():
     """Créer les tables ML si elles n'existent pas"""

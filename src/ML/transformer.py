@@ -1,14 +1,17 @@
-import torch
-import torch.nn as nn
-import pandas as pd
-import numpy as np
+import logging
 import uuid
 import io
-import torch
-import joblib
 import json
-import logging
+
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import joblib
 import pymysql
+<<<<<<< HEAD:src/ML/transformer.py
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit, train_test_split
+=======
 import sys
 import os
 
@@ -19,10 +22,15 @@ from src.config.sql_config import sql_settings
 from skorch import NeuralNetRegressor
 from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
 from sklearn.model_selection import train_test_split
+>>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/TRANSFORMER_AI.py
 from sklearn.preprocessing import StandardScaler
+from skorch import NeuralNetRegressor
 
-
+# Imports internes
+from src.config.sql_config import sql_settings
 from src.data_access.sql_reader import call_data_sql
+from src.ml.model_load import model_load
+from src.ml.lstm import lstm_model
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +75,27 @@ def transformer_model(input_dim=3, d_model=64, nhead=4, num_layers=2, dropout=0.
 
     return Model()
 
+<<<<<<< HEAD:src/ML/transformer.py
+def transformer():
+    net=NeuralNetRegressor(
+        module=transformer_model, 
+        module__input_dim=3, 
+        max_epochs=10, lr=1e-4, 
+        batch_size=32, 
+        optimizer=torch.optim.Adam, 
+        criterion=nn.MSELoss, 
+        device ="cpu"
+    )
+
+    # param_distributions = {
+    #     "module__d_model": [32, 64],
+    #     "module__nhead": [2, 4],
+    #     "module__num_layers": [1, 2],
+    #     "module__dropout": [0.0, 0.1, 0.2],
+    #     "lr": [1e-4, 3e-4, 1e-3],
+    #     "batch_size": [16, 32, 64]
+    # }
+=======
 def transformer_AI():
     net = NeuralNetRegressor(
         module=transformer_model, 
@@ -78,6 +107,7 @@ def transformer_AI():
         criterion=nn.MSELoss, 
         device="cpu"
     )
+>>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/TRANSFORMER_AI.py
 
     param_distributions = {
         "module__d_model": [32, 64],
@@ -173,6 +203,38 @@ def transformer_AI():
         "mse": best_score,
         "look_back": window_size,
         "input_dim": 3,
+<<<<<<< HEAD:src/ML/transformer.py
+        "model_type": "TRANSFORMER"
+    }
+
+    metadata_json = json.dumps(metadata)
+
+    df_model_store = pd.DataFrame([{
+        "id_model": id_model,
+        "model_blob": model_bytes,
+        "scaler_blob": scaler_bytes,
+        "best_params": params_json,
+        "metadata": metadata_json,
+        "created_at": pd.Timestamp.now()
+    }])
+
+    df_model_store = pd.DataFrame([{
+        "id_model": id_model,
+        "created_at": pd.Timestamp.now(),
+        "model_type": "TRANSFORMER",
+        "mse": best_score,
+        "look_back": window_size,
+        "input_dim": 3,
+        **best_params,
+        "model": model_bytes,
+        "scaler": scaler_bytes
+    }])
+
+    print(df_model_store.columns)
+
+    return df_model_store, df_model
+
+=======
         "module__num_layers": best_params.get("module__num_layers"),
         "module__nhead": best_params.get("module__nhead"),
         "module__dropout": best_params.get("module__dropout"),
@@ -184,11 +246,12 @@ def transformer_AI():
     }])
 
     TRANSFORMER_param_load(df_model_store)
+>>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/TRANSFORMER_AI.py
 
     return df_model
 
 
-def TRANSFORMER_param_load(df) -> None:
+def transformer_param_load(df) -> None:
     """
     Loads Transformer parameters into a MySQL database using pymysql.
     """
@@ -289,3 +352,15 @@ def TRANSFORMER_param_load(df) -> None:
     finally:
         logger.info("Connection closed")
         connection.close()
+<<<<<<< HEAD:src/ML/transformer.py
+
+
+
+df_model_store, df_model = transformer()
+
+transformer_param_load(df_model_store)
+model_load(df_model)
+
+
+=======
+>>>>>>> 8591ab6be55cb0696defaf4fb4031201ac06fd61:AI_Model/TRANSFORMER_AI.py

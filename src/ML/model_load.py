@@ -1,10 +1,6 @@
 import pandas as pd
 import pymysql
 import logging
-import sys
-import os
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.config.sql_config import sql_settings
 
@@ -112,7 +108,7 @@ def model_load(df) -> None:
         logger.info("Connection closed")
         connection.close()
 
-def PF_Load(df):
+def pf_load(df):
     """
     Loads data into a MySQL database using pymysql.
 

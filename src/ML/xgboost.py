@@ -1,18 +1,14 @@
-import pandas as pd
 import logging
-import sys
-import os
-import numpy as np
 from math import sqrt
 
+import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
-from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from xgboost import XGBRegressor
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from data_access.sql_reader import call_data_sql
-from ml_helpers import create_ml_tables, create_ml_run, save_metrics, save_params, save_predictions
+from src.data_access.sql_reader import call_data_sql
+from src.ml.ml_helpers import create_ml_tables, create_ml_run, save_metrics, save_params, save_predictions
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
