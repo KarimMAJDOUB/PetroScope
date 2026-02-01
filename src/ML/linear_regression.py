@@ -5,29 +5,24 @@ import uuid
 import pymysql
 import joblib
 
-from config.sql_config import sql_settings
 
+from config.sql_config import sql_settings
 from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV, train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import StandardScaler
 
+
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import r2_score, mean_squared_error
 
 from data_access.sql_reader import call_data_sql
 from util.cleaning import fill_na, normalize
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score, mean_squared_error
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger("LR_AI")
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# -------------------------------------------------------------------------
-# 1. MODÈLE DE PRÉDICTION
-# -------------------------------------------------------------------------
-def random_forest_model():
-    logger.info("Démarrage RF...")
-
-    # A. Connexion
+def lr_model():
     try:
         query="""SELECT  UNIX_TIMESTAMP(DAYTIME) AS DAYTIME,
 				AVG(BORE_OIL_VOL) AS OIL_VOL,
@@ -70,7 +65,6 @@ def random_forest_model():
 
     y_norm, scaler_y = normalize(df_fill_na[['OIL_VOL','GAS_VOL','WAT_VOL']], columns=['OIL_VOL','GAS_VOL','WAT_VOL'])
 
-
     X_train, X_test, y_train, y_test = train_test_split(
     X_norm,
     y_norm,
@@ -82,17 +76,10 @@ def random_forest_model():
     X_test_dates = pd.to_datetime(X_test_dates, unit="s")
 
     param_grid = {
-    "estimator__n_estimators": [200, 400],
-    "estimator__max_depth": [None, 10, 20, 30],
-    "estimator__min_samples_leaf": [1, 2, 5],
-    "estimator__max_features": ["sqrt", 0.5]
+    "estimator__fit_intercept": [True, False]
     }   
 
-
-    base_model = RandomForestRegressor(
-        n_estimators=100,
-        random_state=42
-    )
+    base_model = LinearRegression()
 
     model = MultiOutputRegressor(base_model)
 
@@ -105,39 +92,44 @@ def random_forest_model():
             verbose=0,
             random_state=42
         )
-    
+
     search.fit(X_train, y_train)
+
+    # G. Prédictions & scores
     y_pred = search.predict(X_test)
 
     y_pred_inv = scaler_y.inverse_transform(y_pred)
     y_test_inv = scaler_y.inverse_transform(y_test.values)
 
-    r2 = r2_score(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    logger.info(f"Prédiction J+1 terminée. R2 Global : {r2:.4f}")
+    r2_global = r2_score(y_test, y_pred)
+    mse_global = mean_squared_error(y_test, y_pred)
 
+    y_test_arr = y_test.values
+
+    r2_oil = r2_score(y_test_arr[:, 0], y_pred[:, 0])
+    r2_gas = r2_score(y_test_arr[:, 1], y_pred[:, 1])
+    r2_wat = r2_score(y_test_arr[:, 2], y_pred[:, 2])
+
+    mse_oil = mean_squared_error(y_test_arr[:, 0], y_pred[:, 0])
+    mse_gas = mean_squared_error(y_test_arr[:, 1], y_pred[:, 1])
+    mse_wat = mean_squared_error(y_test_arr[:, 2], y_pred[:, 2])
+
+
+    logger.info(f"LR terminé — R2 global: {r2_global:.4f} | MSE global: {mse_global:.4f}")
+
+    # H. Résultats
     id_model = str(uuid.uuid4())
-
-    model_path = f"models/rf_{id_model}.pkl"
-    joblib.dump(model, model_path)
-
     df_params = pd.DataFrame([{
-    "id_model": id_model,
-    "timestamp": pd.Timestamp.now(),
-
-    "n_estimators": search.best_params_["estimator__n_estimators"],
-    "max_depth": search.best_params_["estimator__max_depth"],
-    "min_samples_leaf": search.best_params_["estimator__min_samples_leaf"],
-    "max_features": search.best_params_["estimator__max_features"],
-
-    "random_state": 42,
-    "r2_score": r2,
-    "mse": mse,
-    "algo": "RF_MultiOutput_J+1",
-    "model_path": model_path
+        "id_model": id_model,
+        "timestamp": pd.Timestamp.now(),
+        "algo": "LinearRegression",
+        "r2_global": float(r2_global),
+        "mse_global": float(mse_global),
+        "r2_oil": float(r2_oil), "r2_gas": float(r2_gas), "r2_wat": float(r2_wat),
+        "mse_oil": float(mse_oil), "mse_gas": float(mse_gas), "mse_wat": float(mse_wat)
     }])
 
-    
+    lr_param_load(df_params)
 
     df_predictions = pd.DataFrame(
         np.hstack([y_test_inv, y_pred_inv]),
@@ -145,15 +137,13 @@ def random_forest_model():
     df_predictions["DAYTIME"] = X_test_dates.values
 
     df_predictions["id_model"] = id_model
-    df_predictions["model_type"] = "RF"
+    df_predictions["model_type"] = "LR"
 
-    rf_param_load(df_params)
-   
     return df_predictions
 
-def rf_param_load(df):
+def lr_param_load(df):
     """
-    Loads Random Forest parameters into a MySQL database using pymysql.
+    Loads Linear Regression parameters into a MySQL database using pymysql.
     """
     try:
         connection = pymysql.connect(
@@ -163,49 +153,46 @@ def rf_param_load(df):
             cursorclass=sql_settings.cursorclass
         )
         logger.info("Connection established!")
-        
+
         with connection.cursor() as cursor:
 
+            # Création de la table adaptée à LinearRegression
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS RF_PARAM (
+                CREATE TABLE IF NOT EXISTS LR_PARAM (
                     id_model VARCHAR(36) PRIMARY KEY,
                     timestamp DATETIME,
-
-                    n_estimators INT,
-                    max_depth INT NULL,
-                    min_samples_leaf INT,
-                    max_features VARCHAR(50),
-
-                    random_state INT,
-                    r2_score DECIMAL(10,5),
-                    mse DECIMAL(20,5),
                     algo VARCHAR(50),
-                    model_path VARCHAR(255)
+                    r2_global DECIMAL(10,5),
+                    mse_global DECIMAL(20,5),
+                    r2_oil DECIMAL(10,5),
+                    r2_gas DECIMAL(10,5),
+                    r2_wat DECIMAL(10,5),
+                    mse_oil DECIMAL(20,5),
+                    mse_gas DECIMAL(20,5),
+                    mse_wat DECIMAL(20,5)
                 );
             """)
-            
+
             insert_query = """
-                INSERT INTO RF_PARAM 
-                (
-                    id_model, timestamp,
-                    n_estimators, max_depth, min_samples_leaf, max_features,
-                    random_state, r2_score, mse, algo, model_path
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE 
+                INSERT INTO LR_PARAM (
+                    id_model, timestamp, algo,
+                    r2_global, mse_global,
+                    r2_oil, r2_gas, r2_wat,
+                    mse_oil, mse_gas, mse_wat
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
                     timestamp = VALUES(timestamp),
-
-                    n_estimators = VALUES(n_estimators),
-                    max_depth = VALUES(max_depth),
-                    min_samples_leaf = VALUES(min_samples_leaf),
-                    max_features = VALUES(max_features),
-
-                    random_state = VALUES(random_state),
-                    r2_score = VALUES(r2_score),
-                    mse = VALUES(mse),
                     algo = VALUES(algo),
-                    model_path = VALUES(model_path)
-                """
+                    r2_global = VALUES(r2_global),
+                    mse_global = VALUES(mse_global),
+                    r2_oil = VALUES(r2_oil),
+                    r2_gas = VALUES(r2_gas),
+                    r2_wat = VALUES(r2_wat),
+                    mse_oil = VALUES(mse_oil),
+                    mse_gas = VALUES(mse_gas),
+                    mse_wat = VALUES(mse_wat)
+            """
+
             logger.info(type(df))
             for _, row in df.iterrows():
                 cursor.execute(
@@ -213,27 +200,25 @@ def rf_param_load(df):
                     (
                         row["id_model"],
                         row["timestamp"],
-
-                        row["n_estimators"],
-                        row["max_depth"],
-                        row["min_samples_leaf"],
-                        row["max_features"],
-
-                        row["random_state"],
-                        row["r2_score"],
-                        row["mse"],
                         row["algo"],
-                        row["model_path"]
+                        row["r2_global"],
+                        row["mse_global"],
+                        row["r2_oil"],
+                        row["r2_gas"],
+                        row["r2_wat"],
+                        row["mse_oil"],
+                        row["mse_gas"],
+                        row["mse_wat"]
                     )
                 )
-        
+
         connection.commit()
         logger.info(
-            f"Model parameters saved successfully with id: {df['id_model'].values[0]}"
+            f"Linear Regression parameters saved successfully with id: {df['id_model'].values[0]}"
         )
-        
+
     except Exception as e:
-        logger.error(f"Erreur Param: {e}")
+        logger.error(f"Erreur Param LR: {e}")
         if 'connection' in locals():
             connection.rollback()
         raise

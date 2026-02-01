@@ -26,8 +26,10 @@ def etl_orchestration(file_name: str) -> bool:
     Returns True if ETL succeeded, False otherwise.
     """
     try:
-        #Construct full path to the ingested file
-        path_file = os.path.join('Data', 'Data_Ingested', file_name)
+        current_file=os.path.dirname(os.path.abspath(__file__))
+
+        path_file = os.path.join(current_file,'..', '..','Data','Data_Ingested', file_name)
+
         if not os.path.exists(path_file):
             logger.error(f"File not found: {path_file}")
             return False

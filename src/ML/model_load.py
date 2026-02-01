@@ -2,7 +2,7 @@ import pandas as pd
 import pymysql
 import logging
 
-from src.config.sql_config import sql_settings
+from config.sql_config import sql_settings
 
 logger = logging.getLogger(__name__)
 
