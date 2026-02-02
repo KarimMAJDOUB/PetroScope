@@ -20,6 +20,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.dirname(current_dir)
 sys.path.append(src_dir)
 
+print(src_dir)
+
 # --------------------------------------------------
 # ETL / Ingestion imports
 # --------------------------------------------------
@@ -32,60 +34,43 @@ from etl.orchestration import etl_orchestration
 # - model function
 # - parameter saving function
 # - prediction saving function
+from ml.random_forest import random_forest_model
+from ml.xgboost import xgb_model
+from ml.linear_regression import lr_model
+from ml.model_load import model_load
+from ml.output_generator import output_gen
 # --------------------------------------------------
 MODEL_INFOS = []
 
 try:
-    from src.ml.random_forest import random_forest_model, random_forest_param_load, model_load as rf_save_preds
     MODEL_INFOS.append({
         "name": "Random Forest",
         "available": True,
         "model_func": random_forest_model,
-        "param_func": random_forest_param_load,
-        "save_func": rf_save_preds
+        "save_func": model_load
     })
 except ImportError as e:
     logger.warning(f"Random Forest not available: {e}")
 
 try:
-    from src.ml.lstm import lstm_model, lstm_param_load
-    from src.ml.model_load import model_load as lstm_save_preds
-    MODEL_INFOS.append({
-        "name": "LSTM",
-        "available": True,
-        "model_func": lstm_model,
-        "param_func": lstm_param_load,
-        "save_func": lstm_save_preds
-    })
-except ImportError as e:
-    logger.warning(f"LSTM not available: {e}")
-
-try:
-    from src.ml.transformer import transformer, transformer_param_load
-    from src.ml.model_load import model_load as transformer_save_preds
-    MODEL_INFOS.append({
-        "name": "Transformer",
-        "available": True,
-        "model_func": transformer,
-        "param_func": transformer_param_load,
-        "save_func": transformer_save_preds
-    })
-except ImportError as e:
-    logger.warning(f"Transformer not available: {e}")
-
-try:
-    from src.ml.xgboost import xgb_model, xgb_param_load
-    from src.ml.model_load import model_load as xgb_save_preds
     MODEL_INFOS.append({
         "name": "XGBoost",
         "available": True,
         "model_func": xgb_model,
-        "param_func": xgb_param_load,
-        "save_func": xgb_save_preds
+        "save_func": model_load
     })
 except ImportError as e:
     logger.warning(f"XGBoost not available: {e}")
 
+try:
+    MODEL_INFOS.append({
+        "name": "Linear Regression",
+        "available": True,
+        "model_func": lr_model,
+        "save_func": model_load
+    })
+except ImportError as e:
+    logger.warning(f"XGBoost not available: {e}")
 # --------------------------------------------------
 # Utility functions
 # --------------------------------------------------
@@ -94,7 +79,7 @@ def get_latest_file():
     Returns the latest file in the Raw_Data folder.
     If no file is found, returns None.
     """
-    data_folder = os.path.join(os.path.dirname(os.path.dirname(current_dir)), "Data", "Raw_Data")
+    data_folder = os.path.join(os.path.dirname(os.path.dirname(current_dir)), "Data")
     files = [f for f in os.listdir(data_folder) if f.endswith(('.xlsx','.xls','.csv','.json','.txt'))]
     if not files:
         return None
@@ -111,18 +96,19 @@ def run_etl(file_name: str) -> bool:
         logger.info(f"Starting ingestion for {file_name}")
         ingestion(file_name)
 
-        csv_file = f"{file_name.rsplit('.', 1)[0]}_ready.csv"
+        csv_file = f"{file_name.rsplit('.', 1)[0]}.csv"
+
         success = etl_orchestration(csv_file)
 
         if success:
-            logger.info(f"ETL completed successfully for {file_name}")
+            logger.info(f"ETL completed successfully for {csv_file}")
         else:
-            logger.warning(f"ETL failed or skipped for {file_name}")
+            logger.warning(f"ETL failed or skipped for {csv_file}")
 
         return success
 
     except Exception as e:
-        logger.error(f"Error in run_etl for {file_name}: {e}")
+        logger.error(f"Error in run_etl for {csv_file}: {e}")
         return False
 
 def run_model(model_info: dict):
@@ -147,14 +133,7 @@ def run_model(model_info: dict):
     start_time = time.time()
 
     try:
-        #Run the model and collect outputs
-        df_params, df_preds = model_info["model_func"]()
-        
-        #Save parameters if available
-        if df_params is not None:
-            model_info["param_func"](df_params)
-        
-        #Save predictions if available
+        df_preds = model_info["model_func"]()
         if df_preds is not None:
             model_info["save_func"](df_preds)
 
@@ -183,7 +162,7 @@ def cron():
         if not file_name:
             logger.warning("No file found, skipping this run")
             return
-
+       
         #Run ETL
         run_etl(file_name)
 
@@ -191,6 +170,9 @@ def cron():
         logger.info("Starting ML model computations")
         for model_info in MODEL_INFOS:
             run_model(model_info)
+
+        logger.info("Starting output generation")
+        output_gen()
 
     except Exception as e:
         logger.error(f"Error in cron execution: {e}")
@@ -200,6 +182,6 @@ def cron():
 # -----------------------------------------
 if __name__ == "__main__":
     scheduler = BlockingScheduler()
-    scheduler.add_job(cron, 'cron', hour='*/2')
+    scheduler.add_job(cron, 'cron', second='*/10')
     logger.info("Scheduler started...")
     scheduler.start()
